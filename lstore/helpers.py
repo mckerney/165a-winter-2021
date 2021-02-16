@@ -8,3 +8,8 @@ def get_bit(value, bit_index) -> int:
     
 def set_bit(value, bit_index) -> int:
     return value | (1 << bit_index)
+
+def getSize(fileobject):
+    fileobject.seek(0,2) # move the cursor to the end of the file
+    size = fileobject.tell()
+    return size

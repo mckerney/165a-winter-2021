@@ -1,9 +1,11 @@
 import math
 from random import randint
+import shutil
 
 from lstore.db import *
 from lstore.table import *
 from lstore.config import *
+from lstore.query import *
 
 
 def makeTable():
@@ -25,7 +27,7 @@ def makeTable():
                 # print(f'{column} : {column.data}\n')
                 print(f'            {column}\n')
 
-makeTable()
+#makeTable()
 
 def testInsert():
     records = {}
@@ -51,7 +53,7 @@ def __rid_to_page_location(rid: int) -> dict:
     physical_page_index = index % ENTRIES_PER_PAGE
     return { 'page_range': page_range_index, 'base_page': base_page_index, 'page_index': physical_page_index }
 
-print(f'{__rid_to_page_location(2050)}\n')
+# print(f'{__rid_to_page_location(2050)}\n')
 
 
 def test_database() -> None:
@@ -89,4 +91,45 @@ def test_database() -> None:
     print(f'Table total Base Pages: {table_bp_2}\n')
     pass
 
-test_database()
+#test_database()
+
+def clear_database():
+    shutil.rmtree("./root")
+
+def test_database2() -> None:
+    '''
+    Test to check DB table creation functionality
+    '''
+    print('----------- test_database2 -------------')
+    
+    # check DB and Table creation
+    # clear_database()
+    db = Database()
+    db.open("./root")
+    student_table = db.create_table(name='Students', num_columns=6, key=0)
+    teacher_table = db.create_table(name='Teachers', num_columns=3, key=1)
+    student_query = Query(student_table)
+    print(student_query)
+    student_query.insert(7909887, 1, 2, 3, 4, 5)
+    student_query.insert(8798797, 6, 7, 8, 9, 10)
+    db.close()
+
+# print(test_database2())
+
+def test_insert_read() -> None:
+    '''
+    Test to check insert and read from the bufferpool
+    '''
+    print('----------- test_insert_read -------------')
+    # clear_database()
+    db = Database()
+    db.open('./root')
+    test_table = db.create_table('test', 6, 0)
+    query = Query(test_table)
+    query.insert(999, 1, 2, 3, 4, 5)
+    record = query.select(999, 0, [1,1,1,1,1,1])
+    print(record[0].all_columns)
+    # db.drop_table('test')
+    db.close()
+
+test_insert_read()

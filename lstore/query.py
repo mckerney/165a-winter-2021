@@ -53,6 +53,7 @@ class Query:
         # New record passed the checks, set schema encoding to 0, create a new record, and write to the table
         blank_schema_encoding = 0
         new_rid = self.table.new_base_rid()
+        self.table.index_on_primary_key[unique_identifier] = new_rid
         new_record = Record(key=unique_identifier, rid=new_rid, schema_encoding=blank_schema_encoding, column_values=columns_list)
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 

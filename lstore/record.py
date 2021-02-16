@@ -8,6 +8,8 @@ class Record:
         date_time_object = datetime.now()
         date_time_int = int(date_time_object.strftime("%Y%m%d%H%M%S"))
         # 0 for indirection column
-        self.meta_data = [0, rid, date_time_int, schema_encoding]
+        # TODO take in base rid
+        base_rid = rid
+        self.meta_data = [0, rid, base_rid, date_time_int, schema_encoding]
         self.user_data = column_values
         self.all_columns = self.meta_data + self.user_data
