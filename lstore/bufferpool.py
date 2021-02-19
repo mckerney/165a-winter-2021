@@ -48,7 +48,25 @@ class Bufferpool:
         """
         Function that evicts a page from the Bufferpool
         """
-
+        index = 0
+        frame_index = 0
+        last_used_page = self.frames[0]
+        for frame in self.frames:
+            if frame.time_in_bufferpool > last_used_page.time_in_bufferpool:
+                last_used_page = frame
+                frame_index = index
+            index += 1
+        
+        if last_used_page.dirty_bit:
+            write_path = last_used_page.path_to_page_on_disk
+            all_cols = last_used_page.all_columns
+            write_to_disk(write_path, all_cols)
+        
+        frame_key = last_used_page.tuple_key
+        print(f'EVICTING {frame_key}')
+        del self.frame_directory[frame_key]
+        '''
+        # beginning
         least_used_page = float('inf')
         index = 0
 
@@ -66,8 +84,10 @@ class Bufferpool:
         frame_key = self.frames[least_used_page].tuple_key
         # print(f'EVICTING {frame_key}')
         del self.frame_directory[frame_key]
-
-        return least_used_page
+        # end
+        '''
+        
+        return frame_index
 
     def load_page(self, table_name: str, num_columns: int, page_range_index: int, base_page_index: int,
                   is_base_record: bool):
