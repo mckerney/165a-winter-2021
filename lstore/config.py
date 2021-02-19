@@ -17,4 +17,5 @@ TIMESTAMP_COLUMN = 3  # datetime
 SCHEMA_ENCODING_COLUMN = 4  # string
 KEY_COLUMN = META_COLUMN_COUNT
 
-BUFFERPOOL_FRAME_COUNT = 1  # 1 frame == 1 base page
+BUFFERPOOL_FRAME_COUNT = 75 # 1 frame == 1 base page
+

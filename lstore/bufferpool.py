@@ -48,6 +48,8 @@ class Bufferpool:
         """
         Function that evicts a page from the Bufferpool
         """
+        
+        # print('EVICTING')
 
         least_used_page = float('inf')
         index = 0
@@ -57,11 +59,12 @@ class Bufferpool:
                 least_used_page = index
             index += 1
 
-        if self.frames[least_used_page].dirty_bit:
-            frame_to_write = self.frames[least_used_page]
-            write_path = self.frames[least_used_page].path_to_page_on_disk
-            all_columns = frame_to_write.all_columns
-            write_to_disk(write_path, all_columns)
+        # if self.frames[least_used_page].dirty_bit:
+        #     frame_to_write = self.frames[least_used_page]
+        #     #write_path = self.frames[least_used_page].path_to_page_on_disk
+        #     #all_columns = frame_to_write.all_columns
+        #     #write_to_disk(write_path, all_columns)
+        self.commit_page(least_used_page)
 
         frame_key = self.frames[least_used_page].tuple_key
         # print(f'EVICTING {frame_key}')
@@ -116,6 +119,7 @@ class Bufferpool:
             write_to_disk(path_to_page, all_columns)
 
     def commit_all_frames(self):
+        # Called upon closing th database
         for i in range(len(self.frames)):
             if self.frames[i].dirty_bit:
                 self.commit_page(frame_index=i)
