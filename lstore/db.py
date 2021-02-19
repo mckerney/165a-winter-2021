@@ -4,7 +4,8 @@ import os
 import shutil
 import json
 
-class Database():
+
+class Database:
 
     def __init__(self):
         # store tables in a dictionary
@@ -15,14 +16,15 @@ class Database():
         pass
 
     def open(self, path):
-        '''
+        """
         Open takes in a path to the root of the file system
-        '''
+        """
         # Check if root path already exists and set the root_name
         if os.path.isdir(path):
             self.root_name = path
+            # TODO Reload in table data
 
-        else: # Make a new root for this database
+        else:  # Make a new root for this database
             os.mkdir(path)
             self.root_name = path
 
@@ -31,26 +33,24 @@ class Database():
         # TODO : Load in table information and create simplfied table objects
         # TODO : Read in indexes and page directories
 
-
     def close(self):
-        '''
-        Close checks all the dirty bits and writes updates back to disk; saves page_directories and indexes as json files
-        '''
+        """
+        Close checks all the dirty bits and writes updates back to disk; saves page_directories and indexes as
+        json files
+        """
         # Save all the table data
         table_directory_as_json = json.dumps(self.table_directory)
         table_directory_file = open(f"{self.root_name}/table_directory.json", "w")
         table_directory_file.write(table_directory_as_json)
         table_directory_file.close()
 
-        # go through every table and save the page directorys
+        # go through every table and save the page directories
         for table_info in self.table_directory.values():
             table_name = table_info.get("name")
             table = self.tables[table_name]
             did_close = table.close_table_page_directory()
             if not did_close:
-                # TODO raise exception
-                print(f"Could not close the page directory: {table_name}")
-                return False
+                raise Exception(f"Could not close the page directory: {table_name}")
         
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
@@ -69,9 +69,7 @@ class Database():
  
         table_path_name = f"{self.root_name}/{name}"
         if os.path.isdir(table_path_name):
-            # TODO let the user know this name is already taken
-            print(f"Sorry the name {name} is already taken")
-            return False
+            raise Exception(f"Sorry the name {name} is already taken")
         else:
             os.mkdir(table_path_name)
         
@@ -88,15 +86,19 @@ class Database():
         }
         return table
 
-
-    def delete_directory(self, path):
+    @staticmethod
+    def delete_directory(path):
+        """
+        Function that deletes a given file directory
+        """
         shutil.rmtree(path)
 
-
     def drop_table(self, name):
-        '''
-        drop_table removes the table from self.tables and self.tables_direcroty; deletes the table's directory in disk and its contents
-        '''
+        """
+        drop_table removes the table from self.tables and self.tables_directory; deletes the table's directory in disk
+        and its contents
+        """
+
         if name in self.table_directory:
             table_directory = self.table_directory[name]["table_path_name"]
             if os.path.isdir(table_directory):
@@ -104,10 +106,8 @@ class Database():
                 del self.table_directory[name]
                 del self.tables[name]
                 return True
-            else:
-                return False
-        else:
-            return False
+
+        return False
 
     """
     # Returns table with the passed name

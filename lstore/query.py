@@ -6,6 +6,7 @@ from lstore.helpers import *
 from copy import deepcopy
 from math import ceil
 
+
 class Query:
     """
     # Creates a Query object that can perform different queries on the specified table 
@@ -20,14 +21,14 @@ class Query:
     """
     # internal Method
     # Read a record with specified key
-    # Returns True upon succesful deletion
+    # Returns True upon successful deletion
     # Return False if record doesn't exist or is locked due to 2PL
     # Current implementation of delete only sets the delete value to true in the page_directory
     """
     def delete(self, key):
         # Make sure key exists 
         rid = self.table.record_does_exist(key)
-        if rid == None:
+        if rid is None:
             return False
         
         # Once found, update delete value to true in page directory
@@ -36,7 +37,7 @@ class Query:
 
     """
     # Insert a record with specified columns
-    # Return True upon succesful insertion
+    # Return True upon successful insertion
     # Returns False if insert fails for whatever reason
     """        
     def insert(self, *columns):
@@ -45,22 +46,22 @@ class Query:
         columns_list = list(columns)
         if len(columns_list) != self.table.num_columns:
             return False
-        if not self._check_values_are_valid(columns_list):
+        if not self.check_values_are_valid(columns_list):
             return False
-        # if self.table.record_does_exist(key=unique_identifier) != None:
-        #     return False
 
         # New record passed the checks, set schema encoding to 0, create a new record, and write to the table
         blank_schema_encoding = 0
         new_rid = self.table.new_base_rid()
+        # TODO Make this a real index Nick, thanks
         self.table.index_on_primary_key[unique_identifier] = new_rid
-        new_record = Record(key=unique_identifier, rid=new_rid, schema_encoding=blank_schema_encoding, column_values=columns_list)
+        new_record = Record(key=unique_identifier, rid=new_rid, schema_encoding=blank_schema_encoding,
+                            column_values=columns_list)
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 
         if did_successfully_write:
             return True
-        else:
-            return False
+
+        return False
 
     """
     # Read a record with specified key
@@ -86,13 +87,13 @@ class Query:
 
         # Make sure that the record selected by the user exists in our database
         valid_rid = self.table.record_does_exist(key=key)
-        if valid_rid == None:
+        if valid_rid is None:
             return False
 
         # If exists, read the most update record by looking at the scheme encoding
         # Values with 0 will come from the base pages, values with a 1 will come from the most recent update
         selected_record = self.table.read_record(rid=valid_rid)
-        if selected_record == False:
+        if not selected_record:
             return False
 
         record_return_list = [] # List of records to be returned
@@ -109,7 +110,7 @@ class Query:
 
     """
     # Update a record with specified key and columns
-    # Returns True if update is succesful
+    # Returns True if update is successful
     # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
     """
     def update(self, key, *columns):
@@ -117,35 +118,37 @@ class Query:
         columns_list = list(columns)
         if len(columns_list) != self.table.num_columns:
             return False
-        if columns_list[0] != None:
+
+        if columns_list[0] is not None:
             # You cannot update the primary key
             return False
 
         valid_rid = self.table.record_does_exist(key=key)
-        if valid_rid == None:
+        if valid_rid is None:
             return False
-        
-        current_record = self.table.read_record(rid=valid_rid) # read record need to give the MRU
+        # print(f'*************************** UPDATE FOR {key} ******************************')
+        current_record = self.table.read_record(rid=valid_rid)  # read record need to give the MRU
         # print("current_record", current_record.all_columns)
         schema_encoding_as_int = current_record.all_columns[SCHEMA_ENCODING_COLUMN]
         current_record_data = current_record.user_data
-        # print('schema as int ', schema_encoding_as_int)
+        # # print('schema as int ', schema_encoding_as_int)
         for i in range(len(columns)):
-            # print(f"colummns[i] {i}", columns[i])
-            if columns[i] == None: 
-                if not get_bit(value=schema_encoding_as_int, bit_index=i): # bit is 0, never been updated before, most updated entry is in base pages
-                    # print(f'NOT @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
+            # # print(f"colummns[i] {i}", columns[i])
+            if columns[i] is None:
+                if not get_bit(value=schema_encoding_as_int, bit_index=i):
+                    # # print(f'NOT @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                     current_record_data[i] = 0
                 else:
-                    # print(f' CON @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
+                    # # print(f' CON @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                     continue
             else:
-                # print(f'ELSE @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
+                # # print(f'ELSE @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                 schema_encoding_as_int = set_bit(value=schema_encoding_as_int, bit_index=i)
                 current_record_data[i] = columns[i]
         
-        new_tail_record = Record(key=key, rid=valid_rid, schema_encoding=schema_encoding_as_int, column_values=current_record_data)
-
+        new_tail_record = Record(key=key, rid=valid_rid, schema_encoding=schema_encoding_as_int,
+                                 column_values=current_record_data)
+        # print(f'QUERY New Tail Record {new_tail_record.all_columns}')
         return self.table.update_record(updated_record=new_tail_record, rid=valid_rid)
 
     """
@@ -164,7 +167,7 @@ class Query:
         if start_range < 0 or end_range < 0:
             # Primary keys must be positive
             return False
-        sum = 0
+        column_sum = 0
         record_found = False
         for pr in self.table.page_ranges:
             # for every base page in the page range
@@ -178,16 +181,16 @@ class Query:
                         rid = bp.columns_list[RID_COLUMN].read(i)
                         record = self.table.read_record(rid)
                         data_columns = record.user_data
-                        sum += data_columns[aggregate_column_index]
+                        column_sum += data_columns[aggregate_column_index]
                         record_found = True
         
         if not record_found:
             return False
         
-        return sum
+        return column_sum
 
     """
-    incremenets one column of the record
+    increments one column of the record
     this implementation should work if your select and update queries already work
     :param key: the primary of key of the record to increment
     :param column: the column to increment
@@ -201,9 +204,11 @@ class Query:
             updated_columns[column] = r[column] + 1
             u = self.update(key, *updated_columns)
             return u
+
         return False
 
-    def _check_values_are_valid(self, list_of_values) -> bool:
+    @staticmethod
+    def check_values_are_valid(list_of_values) -> bool:
         for val in list_of_values:
             if val < 0:
                 return False
@@ -211,9 +216,9 @@ class Query:
                 return False
             elif not isinstance(val, int):
                 return False
-            elif val == None:
+            elif val is None:
                 return False
             else:
                 continue
-        return True  
 
+        return True  

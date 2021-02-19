@@ -1,5 +1,6 @@
 from datetime import datetime
 
+
 class Record:
     def __init__(self, key, rid, schema_encoding, column_values):
         self.primary_key = key

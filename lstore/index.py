@@ -1,14 +1,16 @@
 from lstore.page import *
 from lstore.helpers import *
-from os import os 
+import os 
 """
 A data structure holding indices for various columns of a table. Key column should be indexd by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
 """
 
 class IndividualIndex:
     def __init__(self,table,column_number):
+        # pass
         # a map between column value and RID
-        # self.index = {}
+        self.index = {}
+
         # for page_range in table.page_ranges:
         #     for base_page in page_range.base_pages:
         #         for i in range(ENTRIES_PER_PAGE):
@@ -30,43 +32,35 @@ class IndividualIndex:
 
 
         for page_range in os.listdir(table.table_path):
-            files = [entry for entry in os.listdir(table.table_path+'/'+page_range) if os.path.isfile(entry)]
-            directories = [entry for entry in os.listdir(table.table_path+'/'+page_range) if not os.path.isfile(entry)]
-            tail_pages = 0
-            if len(directories) > 0:
-                tail_pages = os.listdir(table.table_path+'/'+page_range+'/'+directories[0])
+            files = [entry for entry in os.listdir(table.table_path+'/'+page_range) if os.path.isfile(table.table_path+'/'+page_range+'/'+entry)]
+            directories = [entry for entry in os.listdir(table.table_path+'/'+page_range) if not os.path.isfile(table.table_path+'/'+page_range+'/'+entry)]
+            
+            tail_pages = os.listdir(table.table_path+'/'+page_range+'/'+directories[0])
 
 
             for file in files:
                 path_to_file = table.table_path+'/'+page_range+'/'+file
-                column_file = open(path_to_file,"rb")
-                column_beginning = (META_COLUMN_COUNT+column_number)*PAGE_SIZE
-                column_file.seek(column_beginning)
-                column_data = bytearray(column_file.read(PAGE_SIZE))
+                print(path_to_file)
 
-                schema_file = open(path_to_file,"rb")
-                schema_beginning = (SCHEMA_ENCODING_COLUMN)*PAGE_SIZE
-                schema_file.seek(schema_beginning)
-                schema_data = bytearray(schema_file.read(PAGE_SIZE))
+                column_page = Page( (META_COLUMN_COUNT+column_number))
+                column_page.read_from_disk(path_to_file,META_COLUMN_COUNT+column_number)
 
-                rid_file = open(path_to_file,"rb")
-                rid_beginning = (RID_COLUMN)*PAGE_SIZE
-                rid_file.seek(rid_beginning)
-                rid_data = bytearray(rid_file.read(PAGE_SIZE))
+                print(column_page.data)
+                schema_page = Page( (SCHEMA_ENCODING_COLUMN))
+                schema_page.read_from_disk(path_to_file,SCHEMA_ENCODING_COLUMN)
 
-                indirection_file = open(path_to_file,"rb")
-                indirection_beginning = (INDIRECTION)*PAGE_SIZE
-                indirection_file.seek(indirection_beginning)
-                indirection_data = bytearray(indirection_file.read(PAGE_SIZE))
+                rid_page = Page( (RID_COLUMN) )
+                rid_page.read_from_disk(path_to_file, RID_COLUMN)
 
+                indirection_page = Page( (INDIRECTION) )
+                indirection_page.read_from_disk(path_to_file,INDIRECTION)
 
                 for row in range(ENTRIES_PER_PAGE):
-                    schema_sp = schema_beginning + (row * PAGE_RECORD_SIZE)
-                    schema_encode = schema_data[schema_sp:(schema_sp+PAGE_RECORD_SIZE)]
+                    print("row",row)
+                    schema_encode = schema_page.read(row)
                     
-                    if get_bit(schema_encode,column_number - META_COLUMN_COUNT):
-                        indirection_sp = indirection_beginning + (row * PAGE_RECORD_SIZE)
-                        indirection_rid = indirection_data[indirection_sp:(indirection_sp+PAGE_RECORD_SIZE)]
+                    if get_bit(schema_encode,column_number) == 1:
+                        indirection_rid = indirection_page.read(row)
 
                         # is this safe?
                         ind_dict = table.page_directory.get(indirection_rid)
@@ -74,13 +68,29 @@ class IndividualIndex:
                         tail_page = ind_dict.get('tail_page')
                         tp_index = ind_dict.get('page_index')
 
-                        # read tail page from 
-                        val = table.page_ranges[page_range_index].tail_pages[tail_page].column_list[column_number].read(i)
-                        self.index[val] = (self.index[val] or []).append(indirection_rid)
+                        # read tail page from information
+
+                        physical_tail_page = Page((META_COLUMN_COUNT+column_number))
+                        physical_tail_page.read(table.table_path+'/'+page_range+'/'+directories[0]+'/'+'tail_page_'+tail_page+'.bin')
+
+                        val = physical_tail_page.read(row)
+                        print("TAIL VAL",val)
+                        try:
+                            self.index[val] = self.index[val]+[rid]
+                        except KeyError:
+                            self.index[val] = [rid] 
                     else:
-                        val = base_page.columns_list[column_number].read(i)
-                        rid = base_page.columns_list[RID_COLUMN].read(i)
-                        self.index[val] = (self.index[val] or []).append(rid)
+                        val = column_page.read(row)
+                        print("BASE VAL",val)
+                        rid = rid_page.read(row)
+                        try:
+                            self.index[val] = self.index[val]+[rid]
+                            
+                        except KeyError:
+                            self.index[val] = [rid] 
+
+        print(self.index)
+        pass
 
 
     # returns set of rids containing given value
@@ -94,6 +104,7 @@ class IndividualIndex:
         # replace old rid with new rid
         # self.index[value] = [x if x!=old_rid else new_rid for x in self.index[value]]
         pass
+
 class Index:
 
     def __init__(self, table):

@@ -1,9 +1,8 @@
-from template.db import Database
-from template.query import Query
-from template.config import init
+from lstore.db import Database
+from lstore.query import Query
+from lstore.config import *
 
 from random import choice, randint, sample, seed
-init()
 
 db = Database()
 db.open('./ECS165')
@@ -27,8 +26,8 @@ for _ in range(10):
             records[key][j] = value
 keys = sorted(list(records.keys()))
 for key in keys:
-    print(records[key])
-    print(records[key])
+    # print(records[key])
+    # print(records[key])
 
 for key in keys:
     record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
@@ -37,8 +36,8 @@ for key in keys:
         if column != records[key][i]:
             error = True
     if error:
-        print('select error on', key, ':', record, ', correct:', records[key])
-print("Select finished")
+        # print('select error on', key, ':', record, ', correct:', records[key])
+# print("Select finished")
 
 deleted_keys = sample(keys, 100)
 for key in deleted_keys:
@@ -50,7 +49,7 @@ for i in range(0, 100):
     column_sum = sum(map(lambda x: records[x][0] if x in records else 0, keys[r[0]: r[1] + 1]))
     result = query.sum(keys[r[0]], keys[r[1]], 0)
     if column_sum != result:
-        print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', result, ', correct: ', column_sum)
-print("Aggregate finished")
+        # print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', result, ', correct: ', column_sum)
+# print("Aggregate finished")
 
 db.close()
