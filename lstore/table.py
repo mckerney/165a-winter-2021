@@ -232,6 +232,10 @@ class Table:
         self.page_directory["table_data"] = table_data
 
     def populate_data_members(self, table_data):
+        """
+        Function that populates a Table's data members from given table_data
+
+        """
         self.name = table_data["name"]
         self.key = table_data["key"]
         self.table_path = table_data["table_path"]

@@ -26,7 +26,7 @@ class Database:
             # load in the table directory
             for entry in os.scandir(path):
                 table_directory_file_path = f"{path}/table_directory.pkl"
-                if entry.path == table_directory_file_path:
+                if entry.path == table_directory_file_path: # grab the table directory
                     with open(table_directory_file_path, "rb") as pkl_file:
                         self.table_directory = pickle.load(pkl_file)
 
@@ -40,6 +40,10 @@ class Database:
         # TODO : Read in indexes and page directories
 
     def populate_tables(self):
+        """
+        Function that populates table_data from table_directory loaded in from open() and sets it to
+        tables[table_name]
+        """
         for table_name in self.table_directory:
             path_to_table = self.table_directory[table_name].get("table_path_name")
             num_columns = self.table_directory[table_name].get("num_columns")
