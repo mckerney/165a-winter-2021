@@ -54,7 +54,7 @@ class Query:
         new_rid = self.table.new_base_rid()
         # TODO Make this a real index Nick, thanks
         self.table.index_on_primary_key[unique_identifier] = new_rid
-        new_record = Record(key=unique_identifier, rid=new_rid, schema_encoding=blank_schema_encoding,
+        new_record = Record(key=unique_identifier, rid=new_rid, base_rid=new_rid, schema_encoding=blank_schema_encoding,
                             column_values=columns_list)
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 
@@ -146,8 +146,8 @@ class Query:
                 schema_encoding_as_int = set_bit(value=schema_encoding_as_int, bit_index=i)
                 current_record_data[i] = columns[i]
         
-        new_tail_record = Record(key=key, rid=valid_rid, schema_encoding=schema_encoding_as_int,
-                                 column_values=current_record_data)
+        new_tail_record = Record(key=key, rid=valid_rid, base_rid=current_record.all_columns[RID_COLUMN],
+                                 schema_encoding=schema_encoding_as_int, column_values=current_record_data)
         # print(f'QUERY New Tail Record {new_tail_record.all_columns}')
         return self.table.update_record(updated_record=new_tail_record, rid=valid_rid)
 

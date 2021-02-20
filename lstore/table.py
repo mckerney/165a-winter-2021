@@ -535,7 +535,7 @@ class Table:
         # print(f'schema = {schema_encode}')
         if not schema_encode:
             # print('NOT SCHEMA')
-            return Record(key=key, rid=rid, schema_encoding=schema_encode, column_values=user_cols)
+            return Record(key=key, rid=rid, base_rid=rid, schema_encoding=schema_encode, column_values=user_cols)
 
         # record has been updated before
         ind_dict = self.page_directory.get(indirection_rid)
@@ -568,7 +568,8 @@ class Table:
         self.bufferpool.frames[frame_index].unpin_frame()
         # Done working with TailPage Frame
 
-        return Record(key=key, rid=rid, schema_encoding=schema_encode, column_values=user_cols)
+        return Record(key=key, rid=indirection_rid, base_rid=rid, schema_encoding=schema_encode,
+                      column_values=user_cols)
 
     def record_does_exist(self, key):
         """
