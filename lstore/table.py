@@ -209,7 +209,65 @@ class Table:
         self.page_range_data[page_range_index]["tail_page_count"] += 1
 
     def __merge(self):
+        """
+        Function loads a PageRange into memory and tries to consolidate TailPage information into BasePages
+        """
+        """
+        Will need to implement the threading around a single method since we don't have a main program that runs,
+        just an interface, this looks like it needs to be done with a Daemon thread specifically.
+        Link for running a method as a daemon thread:
+        http://sebastiandahlgren.se/2014/06/27/running-a-method-as-a-background-thread-in-python/
+        
+        How do we want to initiate this? 
+            - just a check at the end of update_record?
+            - we could spawn a little worker when we open/create the db that has a program loop that polls the
+              table data and makes decisions to merge based on that. Could be useful for QueCC for MS3 as well.
+        """
+        # For each PageRange We will need to do the whole merge process
+        # ** Load PageRange into memory
+        for pr_index in range(self.num_page_ranges):
+            merge_buffer = Bufferpool(self.bufferpool.path_to_root)
+            num_tail_pages = self.page_ranges[pr_index].num_tail_pages
+            # Load each BasePage for the PageRange in the buffer
+            for bp_index in range(BASE_PAGE_COUNT):
+                merge_buffer.load_page(table_name=self.name, num_columns=self.num_columns, page_range_index=pr_index,
+                                       base_page_index=bp_index, is_base_record=True)
+            # Load each TailPage for the PageRange in the buffer
+            for tp_index in range(num_tail_pages):
+                merge_buffer.load_page(table_name=self.name, num_columns=self.num_columns, page_range_index=pr_index,
+                                       base_page_index=tp_index, is_base_record=False)
+
+            tp_start_frame_index = BASE_PAGE_COUNT
+            tp_end_frame_index = merge_buffer.frame_count - 1
+
+            # Traverse TailPages in reverse order, if indirection column is zero we know it's the latest update
+            # use the BASE_RID to update the BasePage record and keep a log of which BasePages were updated
+            for frame in range(tp_end_frame_index, tp_start_frame_index, -1):
+                for record_index in range(ENTRIES_PER_PAGE):
+                    # Check Indirection column of each record looking for 0s
+                    indirection = merge_buffer.frames[frame].all_columns[INDIRECTION].read(record_index)
+                    if not indirection:
+                        # Found Latest Update
+                        base_rid = merge_buffer.frames[frame].all_columns[BASE_RID_COLUMN].read(record_index)
+                        tail_rid = merge_buffer.frames[frame].all_columns[RID_COLUMN].read(record_index)
+                        self.__merge_update(buffer=merge_buffer, page_range_index=pr_index, base_rid=base_rid,
+                                            tail_rid=tail_rid)
+
+        # ** If a BasePage was updated and is currently in the Table Bufferpool, attempt to eject and replace it
+
+        # ** Delete merge_buffer
+
+        # Rinse and repeat for each PageRange in the Table
+
         pass
+
+    def __merge_update(self, buffer: Bufferpool, page_range_index: int, base_rid: int, tail_rid: int):
+        """
+        This helper function performs the BasePage update for the merge process
+        """
+        pass
+
+
 
     def save_table_data(self):
         """
