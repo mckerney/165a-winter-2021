@@ -160,30 +160,29 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum(self, start_range, end_range, aggregate_column_index):
+        # TODO: Once Indexing is implemented need to add logic to support it
         # Check the aggregate_column_index is in range
         if aggregate_column_index < 0 or aggregate_column_index > self.table.num_columns:
             # Invalid user input to sum
             return False
+
         if start_range < 0 or end_range < 0:
             # Primary keys must be positive
             return False
+
         column_sum = 0
         record_found = False
-        for pr in self.table.page_ranges:
-            # for every base page in the page range
-            for bp in pr.base_pages:
-                # for every value in the KEY_COLUMN of the base page
-                for i in range(ENTRIES_PER_PAGE):
-                    key = bp.columns_list[KEY_COLUMN].read(i)
-                    # If the key is between start_range and end_range inclusively,
-                    # read the record and sum at the aggregate_column_index
-                    if key >= start_range and key <= end_range:
-                        rid = bp.columns_list[RID_COLUMN].read(i)
-                        record = self.table.read_record(rid)
-                        data_columns = record.user_data
-                        column_sum += data_columns[aggregate_column_index]
-                        record_found = True
-        
+
+        # This is traversing every base record, needing to load it into the buffer to check the key column
+        for rid in self.table.page_directory:
+            rid_info = self.table.page_directory.get(rid)
+            if rid_info.get('is_base_record'):
+                record = self.table.read_record(rid)
+                key = record.all_columns[KEY_COLUMN]
+                if start_range <= key <= end_range:
+                    column_sum += record.user_data[aggregate_column_index]
+                    record_found = True
+
         if not record_found:
             return False
         

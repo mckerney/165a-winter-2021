@@ -125,7 +125,8 @@ class Table:
     :param path: str                File path of the Table
     :param bufferpool: Bufferpool   Active Bufferpool for the Database
     """
-    def __init__(self, name: str, num_columns: int, key: int, path: str = None, bufferpool: Bufferpool = None, is_new=True):
+    def __init__(self, name: str, num_columns: int, key: int, path: str = None, bufferpool: Bufferpool = None,
+                 is_new=True):
         self.name = name
         self.bufferpool = bufferpool
         self.table_path = path
@@ -169,7 +170,7 @@ class Table:
                 base_page_file = open(base_page_file_name, "wb")
                 
                 physical_page = bytearray(PAGE_SIZE)
-                for i in range(self.num_columns+META_COLUMN_COUNT):
+                for j in range(self.num_columns+META_COLUMN_COUNT):
                     base_page_file.write(physical_page)
                 
                 # print(f"The size using getSize of {base_page_file_name} is {getSize(base_page_file)}\n")
@@ -195,7 +196,8 @@ class Table:
         """
         # Create new tail page
         # # print(f'Allocating new tail page')
-        new_tail_file_name = f"{self.table_path}/page_range_{page_range_index}/tail_pages/tail_page_{tail_page_index}.bin"
+        new_tail_file_name = f"{self.table_path}/page_range_{page_range_index}" \
+                             f"/tail_pages/tail_page_{tail_page_index}.bin"
 
         new_tail_file = open(new_tail_file_name, "wb")
 
@@ -241,7 +243,6 @@ class Table:
         self.num_page_ranges = table_data["num_page_ranges"]
         self.page_range_data = table_data["page_range_data"]
         self.index_on_primary_key = table_data["index_on_primary_key"]
-
 
     def close_table_page_directory(self):
         """
@@ -372,8 +373,8 @@ class Table:
 
     def write_new_record(self, record: Record, rid: int) -> bool:
         """
-        This function takes a newly created rid and a Record and finds the appropriate base page to insert it to and updates
-        the rid value in the page_directory appropriately
+        This function takes a newly created rid and a Record and finds the appropriate base page to insert it to and
+        updates the rid value in the page_directory appropriately
         """
 
         record_info = self.page_directory.get(rid)
@@ -477,17 +478,15 @@ class Table:
         frame_info = (self.name, pr, bp, is_base_record)
         base_page_frame_index = self.bufferpool.frame_directory[frame_info]
 
-        # # print(f'new_update_rid = {new_update_rid}')
+        # print(f'new_update_rid = {new_update_rid}')
         wrote_ind = self.bufferpool.frames[base_page_frame_index].all_columns[INDIRECTION].write(value=new_update_rid,
                                                                                                  row=pp_index)
-        # # print(f'wrote_ind = {wrote_ind}')
-        # # print(f'read new_rid = {self.bufferpool.frames[base_page_frame_index].all_columns[INDIRECTION].read(pp_index)}')
-
-        # # print(f'updated_schema = {updated_schema}')
+        # print(f'wrote_ind = {wrote_ind}')
+        # print(f'updated_schema = {updated_schema}')
         wrote_schema = self.bufferpool.frames[base_page_frame_index].all_columns[SCHEMA_ENCODING_COLUMN]\
             .write(value=updated_schema, row=pp_index)
-        # # print(f'wrote_schema = {wrote_schema}')
-        # # print(f'read updated_schema = '
+        # print(f'wrote_schema = {wrote_schema}')
+        # print(f'read updated_schema = '
         #       f'{self.bufferpool.frames[base_page_frame_index].all_columns[SCHEMA_ENCODING_COLUMN].read(pp_index)}')
         # Stop working with BasePage
         self.bufferpool.frames[base_page_frame_index].set_dirty_bit()
