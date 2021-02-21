@@ -176,7 +176,7 @@ class Query:
         # This is traversing every base record, needing to load it into the buffer to check the key column
         for rid in self.table.page_directory:
             rid_info = self.table.page_directory.get(rid)
-            if rid_info.get('is_base_record'):
+            if rid_info.get('is_base_record') and not rid_info.get('deleted'):
                 record = self.table.read_record(rid)
                 key = record.all_columns[KEY_COLUMN]
                 if start_range <= key <= end_range:
