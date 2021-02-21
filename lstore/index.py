@@ -89,7 +89,7 @@ class IndividualIndex:
         return self.index[value]
 
     def insert(self,value,new_rid):
-        self.index[value] = self.index[value] + [new_rid]
+        self.index[value] = (self.index.get(value) or []) + [new_rid]
     
     def update(self,new_value,old_value, base_rid):
         # remove base rid from the old value's entry
