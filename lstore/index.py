@@ -111,11 +111,11 @@ class Index:
         pass
 
     """
-    # returns the location of all records with the given value on column "column"
+    # returns the IndividualIndex for given column
     """
 
-    def locate(self, column, value):
-        return self.indices[column].get(value)
+    def get_index_for_column(self,column):
+        return self.indices[column]
 
     # """
     # # Returns the RIDs of all records with values in column "column" between "begin" and "end"

@@ -586,3 +586,22 @@ class Table:
                 return rid
         
         return False
+
+    # returns list of rids with given key in given column
+    # if there are no rows with given key in given column, return an empty list
+    # def records_with_rid(self,column,key):
+    #     column_index = self.index.get_index_for_column(column)
+    #     # if there is an index, use the index
+    #     if column_index != None:
+    #         return column_index.get(column)
+    #     # otherwise, do linear scan to find rids with given column value
+    #     else:
+    #         rids_with_value = []
+    #         # use bufferpool to do linear scan
+    #         # write values into rids_with_value
+    #         for key in self.table.page_directory:
+    #             rid_info = self.table.page_directory.get(key)
+    #             if rid_info.get('is_base_record'):
+    #                 record = self.table.read_record(rid)
+    #         return rids_with_value
+
