@@ -81,12 +81,11 @@ class IndividualIndex:
                         self.index[val] = (self.index.get(val) or [])+[rid]
 
         print(self.index)
-        pass
 
 
     # returns set of rids containing given value
     def get(self,value):
-        return self.index[value]
+        return self.index.get(value)
 
     def insert(self,value,new_rid):
         self.index[value] = (self.index.get(value) or []) + [new_rid]
@@ -96,11 +95,9 @@ class IndividualIndex:
         self.index[old_value].remove(base_rid)
         # add base rid to new value's entry
         self.index[new_value] = (self.index.get(new_value) or []) + [base_rid]
-        pass
 
     def delete(self,value,deleted_rid):
         self.index[value].remove(deleted_rid)
-        pass
 
 class Index:
 
@@ -109,6 +106,9 @@ class Index:
         self.indices = [None] *  table.num_columns
         self.table = table
         pass
+    
+    def create_default_primary_index(self):
+        self.create_index(0)
 
     """
     # returns the IndividualIndex for given column
@@ -117,25 +117,19 @@ class Index:
     def get_index_for_column(self,column):
         return self.indices[column]
 
-    # """
-    # # Returns the RIDs of all records with values in column "column" between "begin" and "end"
-    # """
-
-    # def locate_range(self, begin, end, column):
-    #     pass
-
     """
     # optional: Create index on specific column
     """
 
     def create_index(self, column_number):
         self.indices[column_number] = IndividualIndex(self.table,column_number)
-        pass
 
     """
     # optional: Drop index of specific column
     """
 
     def drop_index(self, column_number):
+        if(column_number == 0):
+            print('you cannot remove the primary key index')
+            return
         self.indices[column_number] = None
-        pass

@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from lstore.config import *
 
 class Record:
     def __init__(self, key, rid, base_rid, schema_encoding, column_values):
@@ -12,3 +12,6 @@ class Record:
         self.meta_data = [0, rid, base_rid, date_time_int, schema_encoding]
         self.user_data = column_values
         self.all_columns = self.meta_data + self.user_data
+        
+    def get_rid(self):
+        return self.meta_data[RID_COLUMN]

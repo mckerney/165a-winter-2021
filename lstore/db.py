@@ -53,10 +53,16 @@ class Database:
             with open(path_to_page_directory, "rb") as page_directory:
                 temp_table.page_directory = pickle.load(page_directory)
             page_directory.close()
-
+            
             table_data = temp_table.page_directory["table_data"]
             temp_table.populate_data_members(table_data)
+
+            #read index from disk
+            path_to_indices = f"{path_to_table}/indices.pkl"
+            with open(path_to_indices, "rb") as stored_index:
+                temp_table.index = pickle.load(stored_index)
             self.tables[table_name] = temp_table
+
 
     def close(self):
         """
@@ -73,13 +79,20 @@ class Database:
             table_name = table_info.get("name")
             table = self.tables[table_name]
             did_close = table.close_table_page_directory()
+
             if not did_close:
                 raise Exception(f"Could not close the page directory: {table_name}")
+
+            # save indexes as pkl
+            index_file = open(f"{table.table_path}/indices.pkl", "wb")
+
+            pickle.dump(table.index, index_file)
+            index_file.close()
         
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
 
-        # TODO : save indexes as json
+
 
         return True
 
@@ -99,6 +112,8 @@ class Database:
         
         # TODO : simplify table object down to the bare minimum
         table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool)
+        # create default index on primary key
+        table.index.create_default_primary_index()
         self.tables[name] = table
 
         # Add table information to table directory

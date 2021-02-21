@@ -69,4 +69,3 @@ for i in range(0, 100):
         print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
 print("Aggregate finished")
 db.close()
-grades_table.index.create_index(1)

@@ -131,7 +131,6 @@ class Table:
         self.bufferpool = bufferpool
         self.table_path = path
         self.key = key
-        self.index_on_primary_key = {}
         self.num_columns = num_columns
         self.page_directory = {}
         self.index = Index(self)
@@ -227,7 +226,6 @@ class Table:
             "column_names": self.column_names,
             "num_page_ranges": self.num_page_ranges,
             "page_range_data": self.page_range_data,
-            "index_on_primary_key": self.index_on_primary_key
         }
         self.page_directory["table_data"] = table_data
 
@@ -246,7 +244,6 @@ class Table:
         self.column_names = table_data["column_names"]
         self.num_page_ranges = table_data["num_page_ranges"]
         self.page_range_data = table_data["page_range_data"]
-        self.index_on_primary_key = table_data["index_on_primary_key"]
 
     def close_table_page_directory(self):
         """
@@ -580,28 +577,33 @@ class Table:
         Function returns RID of the an associated key if it exists and None otherwise
         """
         # get record to find the rid associated with the key
-        if key in self.index_on_primary_key:
-            rid = self.index_on_primary_key[key]
-            if not self.page_directory[rid]["deleted"]:
-                return rid
-        
-        return False
+        column_index = self.index.get_index_for_column(0)
+        rids = column_index.get(key)
+        if(rids == None or len(rids) != 1):
+            return None
+        else:
+            if not self.page_directory[rids[0]]["deleted"]:
+                return rids[0]
+            else:
+                return None
 
     # returns list of rids with given key in given column
     # if there are no rows with given key in given column, return an empty list
-    # def records_with_rid(self,column,key):
-    #     column_index = self.index.get_index_for_column(column)
-    #     # if there is an index, use the index
-    #     if column_index != None:
-    #         return column_index.get(column)
-    #     # otherwise, do linear scan to find rids with given column value
-    #     else:
-    #         rids_with_value = []
-    #         # use bufferpool to do linear scan
-    #         # write values into rids_with_value
-    #         for key in self.table.page_directory:
-    #             rid_info = self.table.page_directory.get(key)
-    #             if rid_info.get('is_base_record'):
-    #                 record = self.table.read_record(rid)
-    #         return rids_with_value
+    def records_with_rid(self,column,key):
+        column_index = self.index.get_index_for_column(column)
+        # if there is an index, use the index
+        if column_index != None:
+            return column_index.get(key)
+        # otherwise, do linear scan to find rids with given column value
+        else:
+            rids_with_value = []
+            # use bufferpool to do linear scan
+            # write values into rids_with_value
+            for key in self.page_directory:
+                rid_info = self.page_directory.get(key)
+                if rid_info.get('is_base_record') and not rid_info.get('deleted'):
+                    record = self.read_record(key)
+                    if(record.user_data[column] == key):
+                        rids_with_value.append(record.get_rid())
+            return rids_with_value
 
