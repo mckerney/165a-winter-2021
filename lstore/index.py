@@ -50,18 +50,20 @@ class IndividualIndex:
                     last_row_index = last_physical_page_index+1
 
                 for row in range(last_row_index):
-                    print("row",row)
                     schema_encode = schema_page.read(row)
-                    print("SCHEMA_ENCODING!",schema_encode)
                     schema_encode_bit = get_bit(schema_encode,column_number)
-                    print(f'SCHEMA ENCODE BIT {schema_encode_bit}')
+
+                    rid = rid_page.read(row)
+                    base_ind_dict = table.page_directory.get(rid)
+                    row_deleted = base_ind_dict.get('deleted')
+                    if(row_deleted):
+                        continue
+
                     if schema_encode_bit == 1:
                         indirection_rid = indirection_page.read(row)
+                        tail_ind_dict = table.page_directory.get(indirection_rid)
 
-                        # is this safe?
-                        ind_dict = table.page_directory.get(indirection_rid)
-                        page_range_index = ind_dict.get('page_range')
-                        tail_page = ind_dict.get('tail_page')
+                        tail_page = tail_ind_dict.get('tail_page')
 
                         # read tail page from information
 
@@ -70,21 +72,13 @@ class IndividualIndex:
                         physical_tail_page.read_from_disk(tail_path,META_COLUMN_COUNT+column_number)
 
                         val = physical_tail_page.read(row)
-                        rid = rid_page.read(row)
+                        
                         print("TAIL VAL",val)
-                        try:
-                            self.index[val] = self.index[val]+[rid]
-                        except KeyError:
-                            self.index[val] = [rid] 
+                        self.index[val] = (self.index.get(val) or []) + [rid]
                     else:
                         val = column_page.read(row)
                         print("BASE VAL",val)
-                        rid = rid_page.read(row)
-                        try:
-                            self.index[val] = self.index[val]+[rid]
-                            
-                        except KeyError:
-                            self.index[val] = [rid] 
+                        self.index[val] = (self.index.get(val) or [])+[rid]
 
         print(self.index)
         pass
@@ -95,11 +89,17 @@ class IndividualIndex:
         return self.index[value]
 
     def insert(self,value,new_rid):
-        self.index[value] = self.index[value].append(new_rid)
+        self.index[value] = self.index[value] + [new_rid]
     
-    def update(self,value,new_rid,old_rid):
-        # replace old rid with new rid
-        # self.index[value] = [x if x!=old_rid else new_rid for x in self.index[value]]
+    def update(self,new_value,old_value, base_rid):
+        # remove base rid from the old value's entry
+        self.index[old_value].remove(base_rid)
+        # add base rid to new value's entry
+        self.index[new_value] = (self.index.get(new_value) or []) + [base_rid]
+        pass
+
+    def delete(self,value,deleted_rid):
+        self.index[value].remove(deleted_rid)
         pass
 
 class Index:
