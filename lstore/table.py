@@ -8,15 +8,13 @@ from time import time
 import math
 import os
 import pickle
-from inspect import currentframe, getframeinfo
-
-frameinfo = getframeinfo(currentframe())
+import threading
 
 '''
               *** Table Diagram ***
 
     -----------------------------------------
-    |       Table: Holds Page_range(s)      |
+    |       Table: Holds PageRange(s)       |
     |   ------   ------   ------   ------   |
     |   | PR |   | PR |   | PR |   | PR |   |
     |   ------   ------   ------   ---|--   |
@@ -25,7 +23,7 @@ frameinfo = getframeinfo(currentframe())
                                       |---------|  
                                                 |
     -----------------------------------------   |
-    |     Page_range: Holds Base_page(s)    |   |
+    |     PageRange: Holds BasePage(s)      |   |
     |   ------   ------   ------   ------   |<--|
     |   | BP |   | BP |   | BP |   | BP |   |
     |   ------   ------   ------   ------   |
@@ -38,20 +36,20 @@ frameinfo = getframeinfo(currentframe())
     |   ------   ------   ------   ------   |
     |   | BP |   | BP |   | BP |   | BP |   |
     |   ------   ------   ------   ---|---  |
-    |                  ...            |     |
-    ----------------------------------|------
-                                      |--------|         
-                                               |                                            
-    ----------------------------------------   |                                   
-    |       Base_page: Holds Page(s)       |<--|    
-    |   -----   -----   -----   -----      |    
-    |   | P |   | P |   | P |   | P |      |
-    |   |   |   |   |   |   |   |   |  ... |
-    |   |   |   |   |   |   |   |   |      |
-    |   -----   -----   --|--   -----   |  |                     Each Base_page has a
-    ----------------------|-------------|---                list of Tail_page(s) for updates
-                          |             |               ----------------------------------------
-                          |             |-------------->|       Tail_page: Holds Page(s)       |
+    |                  ...            |     |------|
+    ----------------------------------|------      |
+                                      |--------|   |     
+                                               |   |                                        
+    ----------------------------------------   |   |                               
+    |       BasePage: Holds Page(s)        |<--|   |
+    |   -----   -----   -----   -----      |       |
+    |   | P |   | P |   | P |   | P |      |       |
+    |   |   |   |   |   |   |   |   |  ... |       |
+    |   |   |   |   |   |   |   |   |      |       |
+    |   -----   -----   --|--   -----      |       |              Each PageRange has a
+    ----------------------|-----------------       |         list of TailPage(s) for updates
+                          |                        |    ----------------------------------------
+                          |                        |--->|       TailPage: Holds Page(s)        |
                           |                             |   -----   -----   -----   -----      | 
                           |                             |   | P |   | P |   | P |   | P |      | 
                           |                             |   |   |   |   |   |   |   |   |  ... |
@@ -90,6 +88,7 @@ class BasePage:
         self.columns_list = [Page(column_num=i) for i in range(num_columns + META_COLUMN_COUNT)]
         self.pr_key = parent_key
         self.key = bp_key
+        self.tps = 0
     
 
 class TailPage:
@@ -181,6 +180,7 @@ class Table:
             self.page_range_data[self.num_page_ranges] = {
                 "tail_page_count": 0,
                 "num_tail_records": 0,
+                "num_updates": 0,
                 "path_to_tail_pages": f"{self.table_path}/page_range_{self.num_page_ranges}/tail_pages"
             }
 
@@ -217,17 +217,13 @@ class Table:
         just an interface, this looks like it needs to be done with a Daemon thread specifically.
         Link for running a method as a daemon thread:
         http://sebastiandahlgren.se/2014/06/27/running-a-method-as-a-background-thread-in-python/
-        
-        How do we want to initiate this? 
-            - just a check at the end of update_record?
-            - we could spawn a little worker when we open/create the db that has a program loop that polls the
-              table data and makes decisions to merge based on that. Could be useful for QueCC for MS3 as well.
         """
         # For each PageRange We will need to do the whole merge process
-        # ** Load PageRange into memory
+        print('MERGE ********************************************************************************************')
         for pr_index in range(self.num_page_ranges):
             merge_buffer = Bufferpool(self.bufferpool.path_to_root)
             num_tail_pages = self.page_ranges[pr_index].num_tail_pages
+            updated_records = {}
             # Load each BasePage for the PageRange in the buffer
             for bp_index in range(BASE_PAGE_COUNT):
                 merge_buffer.load_page(table_name=self.name, num_columns=self.num_columns, page_range_index=pr_index,
@@ -240,34 +236,53 @@ class Table:
             tp_start_frame_index = BASE_PAGE_COUNT
             tp_end_frame_index = merge_buffer.frame_count - 1
 
-            # Traverse TailPages in reverse order, if indirection column is zero we know it's the latest update
+            # Traverse TailPages and records in reverse order, if a BasePage hasn't been updated yet, update it
             # use the BASE_RID to update the BasePage record and keep a log of which BasePages were updated
-            for frame in range(tp_end_frame_index, tp_start_frame_index, -1):
-                for record_index in range(ENTRIES_PER_PAGE):
+            for frame in range(tp_end_frame_index, tp_start_frame_index, - 1):
+                for record_index in range(ENTRIES_PER_PAGE - 1, 0, -1):
                     # Check Indirection column of each record looking for 0s
-                    indirection = merge_buffer.frames[frame].all_columns[INDIRECTION].read(record_index)
-                    if not indirection:
+                    base_rid = merge_buffer.frames[frame].all_columns[BASE_RID_COLUMN].read(record_index)
+                    if base_rid not in updated_records.keys():
                         # Found Latest Update
-                        base_rid = merge_buffer.frames[frame].all_columns[BASE_RID_COLUMN].read(record_index)
                         tail_rid = merge_buffer.frames[frame].all_columns[RID_COLUMN].read(record_index)
-                        self.__merge_update(buffer=merge_buffer, page_range_index=pr_index, base_rid=base_rid,
-                                            tail_rid=tail_rid)
+                        self.__merge_update(buffer=merge_buffer, base_rid=base_rid, tail_record_index=record_index,
+                                            tail_frame=frame, tail_rid=tail_rid)
+                        updated_records[base_rid] = True
 
-        # ** If a BasePage was updated and is currently in the Table Bufferpool, attempt to eject and replace it
+            # Write updated BasePages to disk
+            for bp_frame in range(BASE_PAGE_COUNT):
+                merge_buffer.commit_page(bp_frame)
 
-        # ** Delete merge_buffer
-
+            # Delete merge_buffer
+            del merge_buffer
         # Rinse and repeat for each PageRange in the Table
 
-        pass
-
-    def __merge_update(self, buffer: Bufferpool, page_range_index: int, base_rid: int, tail_rid: int):
+    def __merge_update(self, buffer: Bufferpool, base_rid: int, tail_record_index: int, tail_frame: int, tail_rid: int):
         """
         This helper function performs the BasePage update for the merge process
         """
+        base_record_info = self.page_directory.get(base_rid)
+
+        bp_index = base_record_info.get('base_page')
+        pp_index = base_record_info.get('page_index')
+
+        schema = buffer.frames[bp_index].all_columns[SCHEMA_ENCODING_COLUMN].read(pp_index)
+        column_update_indices = []
+
+        # Determine which columns need to be updated based on the schema column
+        for i in range(KEY_COLUMN, self.num_columns + META_COLUMN_COUNT):
+            if get_bit(schema, i - META_COLUMN_COUNT):
+                column_update_indices.append(i)
+
+        # Update the appropriate BasePage columns
+        for index in column_update_indices:
+            data = buffer.frames[tail_frame].all_columns[index].read(tail_record_index)
+            buffer.frames[bp_index].all_columns[index].write(data, pp_index)
+
+        # TODO lock page_directory first?
+        self.page_directory[base_rid]['tps'] = tail_rid
+
         pass
-
-
 
     def save_table_data(self):
         """
@@ -347,6 +362,7 @@ class Table:
             'page_range': page_range_index,
             'base_page': base_page_index,
             'page_index': physical_page_index,
+            'tps': 0,
             'deleted': False,
             'is_base_record': True
         }
@@ -471,8 +487,7 @@ class Table:
         This function takes a Record and a RID and finds the appropriate place to write the record and writes it
         """
 
-        #
-        # # print('--- UPDATING ---')
+        # print('--- UPDATING ---')
         rid_info = self.page_directory.get(rid)
         pr = rid_info.get('page_range')
         bp = rid_info.get('base_page')
@@ -489,20 +504,20 @@ class Table:
         base_page_frame_index = self.bufferpool.frame_directory[frame_info]
 
         old_indirection_rid = self.bufferpool.frames[base_page_frame_index].all_columns[INDIRECTION].read(pp_index)
-        # # print(f'Updating {self.bufferpool.frames[base_page_frame_index].all_columns[KEY_COLUMN].read(pp_index)}')
+        # print(f'Updating {self.bufferpool.frames[base_page_frame_index].all_columns[KEY_COLUMN].read(pp_index)}')
         self.bufferpool.frames[base_page_frame_index].unpin_frame()
         # Done working with BasePage
         # # print(f'JIM: old_ind_rid {old_indirection_rid}')
 
         new_update_rid = self.new_tail_rid(page_range_index=pr)
         new_rid_dict = self.page_directory.get(new_update_rid)
-        # # print(f'new update rid = {new_update_rid}')
+        # print(f'new update rid = {new_update_rid}')
         new_pr = new_rid_dict.get('page_range')
         new_tp = new_rid_dict.get('tail_page')
         new_pp_index = new_rid_dict.get('page_index')
 
         tail_frame_info = (self.name, new_pr, new_tp, False)
-        # # print(f'tail_frame_info = {tail_frame_info}')
+        # print(f'tail_frame_info = {tail_frame_info}')
         # Start working with TailPage
         if not self.bufferpool.is_record_in_pool(self.name, record_info=new_rid_dict):
             # # print(f'Loading TailPage {new_tp}')
@@ -514,13 +529,13 @@ class Table:
         updated_record.all_columns[INDIRECTION] = old_indirection_rid
         updated_record.all_columns[RID_COLUMN] = new_update_rid
 
-        # # print(f'new_tp = {new_tp} new_pp_index = {new_pp_index}')
+        # print(f'new_tp = {new_tp} new_pp_index = {new_pp_index}')
     
         for i in range(len(updated_record.all_columns)):
-            # # print(f'@ i = {i}; all_columns[{i}] = {updated_record.all_columns[i]}')
+            # print(f'@ i = {i}; all_columns[{i}] = {updated_record.all_columns[i]}')
             value = updated_record.all_columns[i]
             self.bufferpool.frames[tail_page_frame_index].all_columns[i].write(value, new_pp_index)
-            # # print(f'read = {self.bufferpool.frames[tail_page_frame_index].all_columns[i].read(new_pp_index)}')
+            # print(f'read = {self.bufferpool.frames[tail_page_frame_index].all_columns[i].read(new_pp_index)}')
         self.bufferpool.frames[tail_page_frame_index].set_dirty_bit()
         self.bufferpool.frames[tail_page_frame_index].unpin_frame()
         # Stop working with TailPage
@@ -551,6 +566,13 @@ class Table:
         self.bufferpool.frames[base_page_frame_index].set_dirty_bit()
         self.bufferpool.frames[base_page_frame_index].unpin_frame()
 
+        self.page_range_data[pr]['num_updates'] += 1
+        # Trigger merge every 1000 updates to the PageRange
+        if self.page_range_data[pr].get('num_updates') % 1000 == 0:
+            merge_thread = threading.Thread(target=self.__merge)
+            merge_thread.daemon = True
+            merge_thread.start()
+
         # print('----- EXITING UPDATE ------')
         return True
 
@@ -568,6 +590,7 @@ class Table:
         bp = record_info.get("base_page")
         pp_index = record_info.get("page_index")
         is_base_record = record_info.get("is_base_record")
+        tps = record_info.get('tps')
         all_entries = []
 
         # Start working with BasePage Frame
@@ -576,7 +599,7 @@ class Table:
             # print('BP not in pool, loading...')
             self.bufferpool.load_page(self.name, self.num_columns, page_range_index=pr, base_page_index=bp,
                                       is_base_record=is_base_record)
-        
+
         # Get Frame index
         frame_index = self.bufferpool.frame_directory.get(frame_info)
         indirection_rid = self.bufferpool.frames[frame_index].all_columns[INDIRECTION].read(pp_index)
@@ -592,7 +615,7 @@ class Table:
         self.bufferpool.frames[frame_index].unpin_frame()
         # Done working with BasePage Frame
         # print(f'schema = {schema_encode}')
-        if not schema_encode:
+        if not schema_encode and tps == indirection_rid:
             # print('NOT SCHEMA')
             return Record(key=key, rid=rid, base_rid=rid, schema_encoding=schema_encode, column_values=user_cols)
 
