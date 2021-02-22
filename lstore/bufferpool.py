@@ -52,7 +52,7 @@ class Bufferpool:
         frame_index = 0
         last_used_page = self.frames[0]
         for frame in self.frames:
-            if frame.time_in_bufferpool > last_used_page.time_in_bufferpool:
+            if frame.time_in_bufferpool < last_used_page.time_in_bufferpool:
                 last_used_page = frame
                 frame_index = index
             index += 1
@@ -95,7 +95,7 @@ class Bufferpool:
         self.frames[frame_index].pin_frame()
 
         # Set time_in_bufferpool to current time
-        self.frames[frame_index] = datetime.now()
+        self.frames[frame_index].time_in_bufferpool = datetime.now()
 
         # Allocate physical pages for meta data and user data
         self.frames[frame_index].all_columns = [Page(column_num=i) for i in range(num_columns + META_COLUMN_COUNT)]
