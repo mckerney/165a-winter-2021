@@ -37,8 +37,8 @@ class Query:
 
         # remove rid of deleted row from all indexes
         record = self.table.read_record(rid)
-        for i in range(len(record.all_columns)):
-            key = record.all_columns[i]
+        for i in range(len(record.user_data)):
+            key = record.user_data[i]
             if self.table.index.indices[i] != None:
                 self.table.index.get_index_for_column(i).delete(key,rid)
         return True
