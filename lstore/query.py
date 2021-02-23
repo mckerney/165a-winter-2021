@@ -34,6 +34,13 @@ class Query:
         # Once found, update delete value to true in page directory
 
         self.table.page_directory[rid]["deleted"] = True
+
+        # remove rid of deleted row from all indexes
+        record = self.table.read_record(rid)
+        for i in range(len(record.all_columns)):
+            key = record.all_columns[i]
+            if self.table.index.indices[i] != None:
+                self.table.index.get_index_for_column(i).delete(key,rid)
         return True
 
     """
