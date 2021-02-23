@@ -48,6 +48,8 @@ class Bufferpool:
         """
         Function that evicts a page from the Bufferpool
         """
+
+        least_used_page = float('inf')
         index = 0
         frame_index = 0
         last_used_page = self.frames[0]
@@ -118,6 +120,7 @@ class Bufferpool:
             write_to_disk(path_to_page, all_columns)
 
     def commit_all_frames(self):
+        # Called upon closing th database
         for i in range(len(self.frames)):
             if self.frames[i].dirty_bit:
                 self.commit_page(frame_index=i)

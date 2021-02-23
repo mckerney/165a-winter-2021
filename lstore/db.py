@@ -3,6 +3,7 @@ from lstore.bufferpool import *
 import os
 import shutil
 import json
+import pickle
 
 
 class Database:
@@ -13,25 +14,55 @@ class Database:
         self.tables = {}
         self.bufferpool = None
         self.root_name = None
-        pass
 
     def open(self, path):
         """
         Open takes in a path to the root of the file system
         """
+        self.bufferpool = Bufferpool(path)
         # Check if root path already exists and set the root_name
         if os.path.isdir(path):
             self.root_name = path
-            # TODO Reload in table data
+            # load in the table directory
+            for entry in os.scandir(path):
+                table_directory_file_path = f"{path}/table_directory.pkl"
+                if entry.path == table_directory_file_path: # grab the table directory
+                    with open(table_directory_file_path, "rb") as pkl_file:
+                        self.table_directory = pickle.load(pkl_file)
+
+            self.populate_tables()
+
 
         else:  # Make a new root for this database
             os.mkdir(path)
             self.root_name = path
 
-        self.bufferpool = Bufferpool(path)
-
-        # TODO : Load in table information and create simplfied table objects
         # TODO : Read in indexes and page directories
+
+    def populate_tables(self):
+        """
+        Function that populates table_data from table_directory loaded in from open() and sets it to
+        tables[table_name]
+        """
+        for table_name in self.table_directory:
+            path_to_table = self.table_directory[table_name].get("table_path_name")
+            num_columns = self.table_directory[table_name].get("num_columns")
+            table_key = self.table_directory[table_name].get("key")
+            temp_table = Table(name=table_name, num_columns=num_columns, key=table_key, path=path_to_table, bufferpool=self.bufferpool, is_new=False)
+            path_to_page_directory = f"{path_to_table}/page_directory.pkl"
+            with open(path_to_page_directory, "rb") as page_directory:
+                temp_table.page_directory = pickle.load(page_directory)
+            page_directory.close()
+            
+            table_data = temp_table.page_directory["table_data"]
+            temp_table.populate_data_members(table_data)
+
+            #read index from disk
+            path_to_indices = f"{path_to_table}/indices.pkl"
+            with open(path_to_indices, "rb") as stored_index:
+                temp_table.index = pickle.load(stored_index)
+            self.tables[table_name] = temp_table
+
 
     def close(self):
         """
@@ -39,9 +70,8 @@ class Database:
         json files
         """
         # Save all the table data
-        table_directory_as_json = json.dumps(self.table_directory)
-        table_directory_file = open(f"{self.root_name}/table_directory.json", "w")
-        table_directory_file.write(table_directory_as_json)
+        table_directory_file = open(f"{self.root_name}/table_directory.pkl", "wb")
+        pickle.dump(self.table_directory, table_directory_file)
         table_directory_file.close()
 
         # go through every table and save the page directories
@@ -49,13 +79,20 @@ class Database:
             table_name = table_info.get("name")
             table = self.tables[table_name]
             did_close = table.close_table_page_directory()
+
             if not did_close:
                 raise Exception(f"Could not close the page directory: {table_name}")
+
+            # save indexes as pkl
+            index_file = open(f"{table.table_path}/indices.pkl", "wb")
+
+            pickle.dump(table.index, index_file)
+            index_file.close()
         
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
 
-        # TODO : save indexes as json
+
 
         return True
 
@@ -75,6 +112,8 @@ class Database:
         
         # TODO : simplify table object down to the bare minimum
         table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool)
+        # create default index on primary key
+        table.index.create_default_primary_index()
         self.tables[name] = table
 
         # Add table information to table directory
@@ -113,4 +152,4 @@ class Database:
     # Returns table with the passed name
     """
     def get_table(self, name):
-        return self.table_directory[name]
+        return self.tables[name]
