@@ -6,8 +6,8 @@ from lstore.helpers import *
 from lstore.bufferpool import *
 from time import time
 import math
-import json
 import os
+import pickle
 from inspect import currentframe, getframeinfo
 
 frameinfo = getframeinfo(currentframe())
@@ -125,19 +125,18 @@ class Table:
     :param path: str                File path of the Table
     :param bufferpool: Bufferpool   Active Bufferpool for the Database
     """
-    def __init__(self, name: str, num_columns: int, key: int, path: str = None, bufferpool: Bufferpool = None):
+    def __init__(self, name: str, num_columns: int, key: int, path: str = None, bufferpool: Bufferpool = None,
+                 is_new=True):
         self.name = name
         self.bufferpool = bufferpool
         self.table_path = path
         self.key = key
-        self.index_on_primary_key = {}
         self.num_columns = num_columns
         self.page_directory = {}
         self.index = Index(self)
         self.num_page_ranges = 0
         self.page_range_data = {}
-        self.page_ranges = [PageRange(num_columns=num_columns, parent_key=key, pr_key=0)] 
-        self.page_ranges_in_disk = self._allocate_page_range_to_disk()
+        self.page_ranges = [PageRange(num_columns=num_columns, parent_key=key, pr_key=0)]
         self.num_records = 0
         self.num_base_records = 0
         self.num_tail_records = 0
@@ -149,10 +148,14 @@ class Table:
             4: 'Schema'
         }
 
+        if is_new:
+            self._allocate_page_range_to_disk()
+
     def _allocate_page_range_to_disk(self):
         """
         Function that allocates a new PageRange to disk
         """
+
         page_range_path_name = f"{self.table_path}/page_range_{self.num_page_ranges}"
         if os.path.isdir(page_range_path_name):
             raise Exception("Page range was not incremented")
@@ -166,7 +169,7 @@ class Table:
                 base_page_file = open(base_page_file_name, "wb")
                 
                 physical_page = bytearray(PAGE_SIZE)
-                for i in range(self.num_columns+META_COLUMN_COUNT):
+                for j in range(self.num_columns+META_COLUMN_COUNT):
                     base_page_file.write(physical_page)
                 
                 # print(f"The size using getSize of {base_page_file_name} is {getSize(base_page_file)}\n")
@@ -192,7 +195,8 @@ class Table:
         """
         # Create new tail page
         # # print(f'Allocating new tail page')
-        new_tail_file_name = f"{self.table_path}/page_range_{page_range_index}/tail_pages/tail_page_{tail_page_index}.bin"
+        new_tail_file_name = f"{self.table_path}/page_range_{page_range_index}" \
+                             f"/tail_pages/tail_page_{tail_page_index}.bin"
 
         new_tail_file = open(new_tail_file_name, "wb")
 
@@ -222,19 +226,33 @@ class Table:
             "column_names": self.column_names,
             "num_page_ranges": self.num_page_ranges,
             "page_range_data": self.page_range_data,
-            "index_on_primary_key": self.index_on_primary_key
         }
         self.page_directory["table_data"] = table_data
+
+    def populate_data_members(self, table_data):
+        """
+        Function that populates a Table's data members from given table_data
+
+        """
+        self.name = table_data["name"]
+        self.key = table_data["key"]
+        self.table_path = table_data["table_path"]
+        self.num_columns = table_data["num_columns"]
+        self.num_records = table_data["num_records"]
+        self.num_base_records = table_data["num_base_records"]
+        self.num_tail_records = table_data["num_tail_records"]
+        self.column_names = table_data["column_names"]
+        self.num_page_ranges = table_data["num_page_ranges"]
+        self.page_range_data = table_data["page_range_data"]
 
     def close_table_page_directory(self):
         """
         Function that writes the Table's page_directory to disk
         """
         self.save_table_data()
-        page_directory_as_json = json.dumps(self.page_directory)
         # TODO make sure this opens and writes, else should return false
-        page_directory_file = open(f"{self.table_path}/page_directory.json", "w")
-        page_directory_file.write(page_directory_as_json)
+        page_directory_file = open(f"{self.table_path}/page_directory.pkl", "wb")
+        pickle.dump(self.page_directory, page_directory_file)
         page_directory_file.close()
 
         return True
@@ -298,13 +316,13 @@ class Table:
 
         relative_rid = self.page_ranges[page_range_index].num_tail_records
         tail_page_index = math.floor(relative_rid / ENTRIES_PER_PAGE) 
-        physical_page_index = relative_rid % ENTRIES_PER_PAGE  
-
+        physical_page_index = relative_rid % ENTRIES_PER_PAGE
+        
         # Check if current PageRange needs another TailPage allocated
-        # print(f'pre-allocation - {self.page_ranges[page_range_index].num_tail_pages}')
-        if tail_page_index > self.page_ranges[page_range_index].num_tail_pages - 1:
-            self._allocate_new_tail_page(page_range_index, self.page_ranges[page_range_index].num_tail_pages)
-
+        if tail_page_index > self.page_range_data[page_range_index]["tail_page_count"] - 1:
+            self._allocate_new_tail_page(page_range_index, self.page_range_data[page_range_index]["tail_page_count"])
+        
+        # TODO Do you need this Jim?
         self.page_ranges[page_range_index].num_tail_records += 1
         self.page_range_data[page_range_index]["num_tail_records"] += 1
         self.num_tail_records += 1
@@ -356,8 +374,8 @@ class Table:
 
     def write_new_record(self, record: Record, rid: int) -> bool:
         """
-        This function takes a newly created rid and a Record and finds the appropriate base page to insert it to and updates
-        the rid value in the page_directory appropriately
+        This function takes a newly created rid and a Record and finds the appropriate base page to insert it to and
+        updates the rid value in the page_directory appropriately
         """
 
         record_info = self.page_directory.get(rid)
@@ -374,7 +392,6 @@ class Table:
             self.bufferpool.load_page(self.name, self.num_columns, page_range_index=pr, base_page_index=bp,
                                       is_base_record=is_base_record)
 
-        # print(self.bufferpool.frame_directory)
         frame_index = self.bufferpool.frame_directory[frame_info]
 
         # Write values to page
@@ -462,17 +479,15 @@ class Table:
         frame_info = (self.name, pr, bp, is_base_record)
         base_page_frame_index = self.bufferpool.frame_directory[frame_info]
 
-        # # print(f'new_update_rid = {new_update_rid}')
+        # print(f'new_update_rid = {new_update_rid}')
         wrote_ind = self.bufferpool.frames[base_page_frame_index].all_columns[INDIRECTION].write(value=new_update_rid,
                                                                                                  row=pp_index)
-        # # print(f'wrote_ind = {wrote_ind}')
-        # # print(f'read new_rid = {self.bufferpool.frames[base_page_frame_index].all_columns[INDIRECTION].read(pp_index)}')
-
-        # # print(f'updated_schema = {updated_schema}')
+        # print(f'wrote_ind = {wrote_ind}')
+        # print(f'updated_schema = {updated_schema}')
         wrote_schema = self.bufferpool.frames[base_page_frame_index].all_columns[SCHEMA_ENCODING_COLUMN]\
             .write(value=updated_schema, row=pp_index)
-        # # print(f'wrote_schema = {wrote_schema}')
-        # # print(f'read updated_schema = '
+        # print(f'wrote_schema = {wrote_schema}')
+        # print(f'read updated_schema = '
         #       f'{self.bufferpool.frames[base_page_frame_index].all_columns[SCHEMA_ENCODING_COLUMN].read(pp_index)}')
         # Stop working with BasePage
         self.bufferpool.frames[base_page_frame_index].set_dirty_bit()
@@ -521,7 +536,7 @@ class Table:
         # print(f'schema = {schema_encode}')
         if not schema_encode:
             # print('NOT SCHEMA')
-            return Record(key=key, rid=rid, schema_encoding=schema_encode, column_values=user_cols)
+            return Record(key=key, rid=rid, base_rid=rid, schema_encoding=schema_encode, column_values=user_cols)
 
         # record has been updated before
         ind_dict = self.page_directory.get(indirection_rid)
@@ -554,16 +569,41 @@ class Table:
         self.bufferpool.frames[frame_index].unpin_frame()
         # Done working with TailPage Frame
 
-        return Record(key=key, rid=rid, schema_encoding=schema_encode, column_values=user_cols)
+        return Record(key=key, rid=indirection_rid, base_rid=rid, schema_encoding=schema_encode,
+                      column_values=user_cols)
 
     def record_does_exist(self, key):
         """
         Function returns RID of the an associated key if it exists and None otherwise
         """
         # get record to find the rid associated with the key
-        if key in self.index_on_primary_key:
-            rid = self.index_on_primary_key[key]
-            if not self.page_directory[rid]["deleted"]:
-                return rid
-        
-        return False
+        column_index = self.index.get_index_for_column(0)
+        rids = column_index.get(key)
+        if(rids == None or len(rids) != 1):
+            return None
+        else:
+            if not self.page_directory[rids[0]]["deleted"]:
+                return rids[0]
+            else:
+                return None
+
+    # returns list of rids with given key in given column
+    # if there are no rows with given key in given column, return an empty list
+    def records_with_rid(self,column,key):
+        column_index = self.index.get_index_for_column(column)
+        # if there is an index, use the index
+        if column_index != None:
+            return column_index.get(key)
+        # otherwise, do linear scan to find rids with given column value
+        else:
+            rids_with_value = []
+            # use bufferpool to do linear scan
+            # write values into rids_with_value
+            for key in self.page_directory:
+                rid_info = self.page_directory.get(key)
+                if rid_info.get('is_base_record') and not rid_info.get('deleted'):
+                    record = self.read_record(key)
+                    if(record.user_data[column] == key):
+                        rids_with_value.append(record.get_rid())
+            return rids_with_value
+

@@ -32,6 +32,7 @@ class Query:
             return False
         
         # Once found, update delete value to true in page directory
+
         self.table.page_directory[rid]["deleted"] = True
         return True
 
@@ -52,13 +53,18 @@ class Query:
         # New record passed the checks, set schema encoding to 0, create a new record, and write to the table
         blank_schema_encoding = 0
         new_rid = self.table.new_base_rid()
-        # TODO Make this a real index Nick, thanks
-        self.table.index_on_primary_key[unique_identifier] = new_rid
-        new_record = Record(key=unique_identifier, rid=new_rid, schema_encoding=blank_schema_encoding,
+
+        new_record = Record(key=unique_identifier, rid=new_rid, base_rid=new_rid, schema_encoding=blank_schema_encoding,
                             column_values=columns_list)
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 
         if did_successfully_write:
+            for i in range(len(columns_list)):
+                column_index = self.table.index.get_index_for_column(i)
+                if column_index != None:
+                    column_index.insert(columns_list[i],new_rid)
+
+            self.table.index
             return True
 
         return False
@@ -76,37 +82,35 @@ class Query:
         # Check that the incoming user agruments to select are valid
         if column > self.table.num_columns or column < 0:
             # column argument out of range
+            print('bad column input 1')
             return False
         if len(query_columns) != self.table.num_columns:
             # length of query columns must equal the number of columns in the table
+            print('bad column input 2')
             return False
         for value in query_columns:
             # incoming query column values must be 0 or 1
             if value != 0 and value != 1:
+                print('bad column input 3')
                 return False
 
         # Make sure that the record selected by the user exists in our database
-        valid_rid = self.table.record_does_exist(key=key)
-        if valid_rid is None:
+        valid_rids = self.table.records_with_rid(column,key)
+        if len(valid_rids) == 0:
+            print('no valid rids',key,column)
             return False
-
-        # If exists, read the most update record by looking at the scheme encoding
-        # Values with 0 will come from the base pages, values with a 1 will come from the most recent update
-        selected_record = self.table.read_record(rid=valid_rid)
-        if not selected_record:
-            return False
-
-        record_return_list = [] # List of records to be returned
-        for i in range(len(query_columns)):
-            if query_columns[i] == 1:
-                # keep value
-                continue
-            else:
-                # replace value with None
-                selected_record.user_data[i] = None
-
-        record_return_list.append(selected_record)
+        record_return_list = []
+        for rid in valid_rids:
+            selected_record = self.table.read_record(rid=rid)
+            for i in range(len(query_columns)):
+                if query_columns[i] == 1:
+                    continue
+                else:
+                    selected_record.user_date[i] = None
+            record_return_list.append(selected_record)
+            
         return record_return_list
+
 
     """
     # Update a record with specified key and columns
@@ -146,9 +150,20 @@ class Query:
                 schema_encoding_as_int = set_bit(value=schema_encoding_as_int, bit_index=i)
                 current_record_data[i] = columns[i]
         
-        new_tail_record = Record(key=key, rid=valid_rid, schema_encoding=schema_encoding_as_int,
-                                 column_values=current_record_data)
+        new_tail_record = Record(key=key, rid=valid_rid, base_rid=current_record.all_columns[RID_COLUMN],
+                                 schema_encoding=schema_encoding_as_int, column_values=current_record_data)
         # print(f'QUERY New Tail Record {new_tail_record.all_columns}')
+
+        #TODO: this is untested, because m2 tester does ever not select non-primary key values
+        # updating indices
+        for i in range(len(columns_list)):
+            if(columns_list[i] != None):
+                column_index = self.table.index.get_index_for_column(i)
+                if(column_index != None):
+                    old_value = current_record.user_data[i]
+                    base_rid = current_record.get_rid()
+                    column_index.update(columns_list[i],old_value,base_rid)
+        
         return self.table.update_record(updated_record=new_tail_record, rid=valid_rid)
 
     """
@@ -160,30 +175,29 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum(self, start_range, end_range, aggregate_column_index):
+        # TODO: Once Indexing is implemented need to add logic to support it
         # Check the aggregate_column_index is in range
         if aggregate_column_index < 0 or aggregate_column_index > self.table.num_columns:
             # Invalid user input to sum
             return False
+
         if start_range < 0 or end_range < 0:
             # Primary keys must be positive
             return False
+
         column_sum = 0
         record_found = False
-        for pr in self.table.page_ranges:
-            # for every base page in the page range
-            for bp in pr.base_pages:
-                # for every value in the KEY_COLUMN of the base page
-                for i in range(ENTRIES_PER_PAGE):
-                    key = bp.columns_list[KEY_COLUMN].read(i)
-                    # If the key is between start_range and end_range inclusively,
-                    # read the record and sum at the aggregate_column_index
-                    if key >= start_range and key <= end_range:
-                        rid = bp.columns_list[RID_COLUMN].read(i)
-                        record = self.table.read_record(rid)
-                        data_columns = record.user_data
-                        column_sum += data_columns[aggregate_column_index]
-                        record_found = True
-        
+
+        # This is traversing every base record, needing to load it into the buffer to check the key column
+        for rid in self.table.page_directory:
+            rid_info = self.table.page_directory.get(rid)
+            if rid_info.get('is_base_record') and not rid_info.get('deleted'):
+                record = self.table.read_record(rid)
+                key = record.all_columns[KEY_COLUMN]
+                if start_range <= key <= end_range:
+                    column_sum += record.user_data[aggregate_column_index]
+                    record_found = True
+
         if not record_found:
             return False
         

@@ -14,18 +14,18 @@ def makeTable():
     '''
     
     x = Table('students', 5, 1)
-    print(x)
-    print(x.page_ranges)
+    pkl(x)
+    pkl(x.page_ranges)
     for pr in x.page_ranges:
-        print('Page Range:\n')
-        print(f'{pr}\n')
+        pkl('Page Range:\n')
+        pkl(f'{pr}\n')
         for bp in x.page_ranges[0].base_pages:
-            print('     Base Page:\n')
-            print(f'        {bp}\n')
-            print('             Columns:\n')
+            pkl('     Base Page:\n')
+            pkl(f'        {bp}\n')
+            pkl('             Columns:\n')
             for column in bp.columns_list:
-                # print(f'{column} : {column.data}\n')
-                print(f'            {column}\n')
+                # pkl(f'{column} : {column.data}\n')
+                pkl(f'            {column}\n')
 
 #makeTable()
 
@@ -37,10 +37,10 @@ def testInsert():
             key = 92106429 + randint(0, 9000)
         records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
         # query.insert(*records[key])
-        # print('inserted', records[key])
-    # print(records)
-    print(*records[key])
-    print(records[key])
+        # pkl('inserted', records[key])
+    # pkl(records)
+    pkl(*records[key])
+    pkl(records[key])
 # testInsert()
 
 def __rid_to_page_location(rid: int) -> dict:
@@ -53,14 +53,14 @@ def __rid_to_page_location(rid: int) -> dict:
     physical_page_index = index % ENTRIES_PER_PAGE
     return { 'page_range': page_range_index, 'base_page': base_page_index, 'page_index': physical_page_index }
 
-# print(f'{__rid_to_page_location(2050)}\n')
+# pkl(f'{__rid_to_page_location(2050)}\n')
 
 
 def test_database() -> None:
     '''
     Test to check DB table creation functionality
     '''
-    print('----------- test_database -------------')
+    pkl('----------- test_database -------------')
     
     # check DB and Table creation
     test_db = Database()
@@ -103,7 +103,7 @@ def test_database2() -> None:
     print('----------- test_database2 -------------')
     
     # check DB and Table creation
-    # clear_database()
+    clear_database()
     db = Database()
     db.open("./root")
     student_table = db.create_table(name='Students', num_columns=6, key=0)
@@ -114,7 +114,17 @@ def test_database2() -> None:
     student_query.insert(8798797, 6, 7, 8, 9, 10)
     db.close()
 
-# print(test_database2())
+    db.open("./root")
+    student_table = db.get_table("Students")
+    student_query = Query(student_table)
+    student_query.insert(870987, 6, 7, 8, 9, 10)
+    ret_record = student_query.select(7909887, 0, [1, 1, 1, 1, 1, 1])
+    print(ret_record[0].user_data)
+    db.close()
+
+    return True
+
+print(test_database2())
 
 def test_insert_read() -> None:
     '''
@@ -130,6 +140,6 @@ def test_insert_read() -> None:
     record = query.select(999, 0, [1,1,1,1,1,1])
     print(record[0].all_columns)
     # db.drop_table('test')
-    db.close()
+    #db.close()
 
-test_insert_read()
+#test_insert_read()

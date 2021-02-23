@@ -63,7 +63,7 @@ class Bufferpool:
             write_to_disk(write_path, all_cols)
         
         frame_key = last_used_page.tuple_key
-        # print(f'EVICTING {frame_key}')
+
         del self.frame_directory[frame_key]
         
         return frame_index
@@ -118,6 +118,7 @@ class Bufferpool:
             write_to_disk(path_to_page, all_columns)
 
     def commit_all_frames(self):
+        # Called upon closing th database
         for i in range(len(self.frames)):
             if self.frames[i].dirty_bit:
                 self.commit_page(frame_index=i)

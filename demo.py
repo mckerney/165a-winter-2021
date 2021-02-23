@@ -25,50 +25,50 @@ def run_demo():
         commands = usr_in.split(' ')  
 
         if commands[0] == "exit":
-            print("exiting database...")
+            pkl("exiting database...")
             break
         elif commands[0] == "table":
-            print(f'Table "{demo_table.name}" at key {demo_table.key} with {demo_table.num_columns} columns')
+            pkl(f'Table "{demo_table.name}" at key {demo_table.key} with {demo_table.num_columns} columns')
         elif commands[0] == "insert":
             record = []
             for i in commands[1:]:
                 record.append(int(i))
             exists = demo_table.record_does_exist(record[0])
             '''if exists != None:
-                print("Record already exists")
+                pkl("Record already exists")
                 continue'''
 
             q = demo_query.insert(record[0], record[1], record[2], record[3])
             if q:
-                print("successfully inserted", record)
+                pkl("successfully inserted", record)
             else:
-                print("failed to insert", record)
+                pkl("failed to insert", record)
         elif commands[0] == "select":
             sid = int(commands[1])
             col = int(commands[2])
             q_cols = [int(i) for i in commands[3][1:-1].split(',')]
             ret_record = demo_query.select(sid, col, q_cols)
             if ret_record == False:
-                print("Could not find record")
+                pkl("Could not find record")
             else:
-                print("Found record with data", ret_record[0].user_data)
+                pkl("Found record with data", ret_record[0].user_data)
         elif commands[0] == "delete":
             sid = int(commands[1])
             
             demo_delete = demo_query.delete(sid)
             if demo_delete:
-                print("Successfully deleted", sid)
+                pkl("Successfully deleted", sid)
             else:
-                print("failed to delete", sid)
+                pkl("failed to delete", sid)
         elif commands[0] == "sum":
             start = int(commands[1])
             end = int(commands[2])
             col_index = int(commands[3])
             demo_sum = demo_query.sum(start, end, col_index)
             if (demo_sum == False):
-                print("Could not calculate sum")
+                pkl("Could not calculate sum")
             else:
-                print("Sum is", demo_sum)
+                pkl("Sum is", demo_sum)
         elif commands[0] == "update":
             sid = int(commands[1])
             updates = []
@@ -79,7 +79,7 @@ def run_demo():
                     updates.append(int(i))
             ret = demo_query.update(sid, None, updates[0], updates[1], updates[2])
             if not ret:
-                print("Failed to update")
+                pkl("Failed to update")
             else:
                 print(f'Updated {sid} with {updates}')
         elif commands[0] == "--help":
