@@ -32,7 +32,6 @@ class Database:
 
             self.populate_tables()
 
-
         else:  # Make a new root for this database
             os.mkdir(path)
             self.root_name = path
