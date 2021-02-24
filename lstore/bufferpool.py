@@ -48,31 +48,37 @@ class Bufferpool:
         """
         Function that evicts a page from the Bufferpool
         """
-<<<<<<< HEAD
-
-        least_used_page = float('inf')
-=======
->>>>>>> 30a947e7b46cbde95237f2fc357efca810fc5202
+        last_used_page = self.frames[0]
         index = 0
         frame_index = 0
-        last_used_page = self.frames[0]
+        min_accesses = last_used_page.access_count
+
+        """
+        Find pages with least number of accesses
+        """
         for frame in self.frames:
-            if frame.time_in_bufferpool < last_used_page.time_in_bufferpool:
+            if frame.access_count < min_accesses:
+                # clear deletion array, and add current frame
+                min_accesses = frame.access_count
                 last_used_page = frame
                 frame_index = index
+            elif frame.access_count == min_accesses:
+                if frame.time_in_bufferpool < last_used_page.time_in_bufferpool:
+                    # frame is older, make update
+                    min_accesses = frame.access_count
+                    last_used_page = frame
+                    frame_index = index                
             index += 1
-        
+
+        """
+        Remove the oldest, least accessed page
+        """
         if last_used_page.dirty_bit:
             write_path = last_used_page.path_to_page_on_disk
             all_cols = last_used_page.all_columns
             write_to_disk(write_path, all_cols)
         
         frame_key = last_used_page.tuple_key
-<<<<<<< HEAD
-        # print(f'EVICTING {frame_key}')
-=======
-
->>>>>>> 30a947e7b46cbde95237f2fc357efca810fc5202
         del self.frame_directory[frame_key]
         
         return frame_index
