@@ -155,7 +155,6 @@ class Table:
         """
         Function that allocates a new PageRange to disk
         """
-
         page_range_path_name = f"{self.table_path}/page_range_{self.num_page_ranges}"
         if os.path.isdir(page_range_path_name):
             raise Exception("Page range was not incremented")
@@ -239,6 +238,7 @@ class Table:
             merge_buffer = Bufferpool(self.bufferpool.path_to_root)
             merge_buffer.merge_buffer = True
             num_tail_pages = self.page_ranges[pr_index].num_tail_pages
+
             updated_records = {}
             updated_base_pages = {}
 
@@ -266,7 +266,8 @@ class Table:
                         self.__merge_update(buffer=merge_buffer, base_rid=base_rid, tail_record_index=record_index,
                                             tail_frame=frame, tail_rid=tail_rid)
                         updated_records[base_rid] = True
-                        bp = int(base_rid / ENTRIES_PER_PAGE)
+                        bp_info = self.page_directory.get(base_rid)
+                        bp = bp_info.get('base_page')
                         updated_base_pages[bp] = True
 
             # Write updated BasePages to disk
