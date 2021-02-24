@@ -56,12 +56,11 @@ class Database:
             table_data = temp_table.page_directory["table_data"]
             temp_table.populate_data_members(table_data)
 
-            #read index from disk
+            # read index from disk
             path_to_indices = f"{path_to_table}/indices.pkl"
             with open(path_to_indices, "rb") as stored_index:
                 temp_table.index = pickle.load(stored_index)
             self.tables[table_name] = temp_table
-
 
     def close(self):
         """
@@ -77,6 +76,7 @@ class Database:
         for table_info in self.table_directory.values():
             table_name = table_info.get("name")
             table = self.tables[table_name]
+            table.record_lock = None
             did_close = table.close_table_page_directory()
 
             if not did_close:
@@ -90,8 +90,6 @@ class Database:
         
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
-
-
 
         return True
 
@@ -151,4 +149,5 @@ class Database:
     # Returns table with the passed name
     """
     def get_table(self, name):
+        print(f'tables = {self.tables}')
         return self.tables[name]

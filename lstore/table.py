@@ -667,20 +667,22 @@ class Table:
         # get record to find the rid associated with the key
         column_index = self.index.get_index_for_column(0)
         rids = column_index.get(key)
-        if(rids == None or len(rids) != 1):
+        if rids is None or len(rids) != 1:
             return None
         else:
             if not self.page_directory[rids[0]]["deleted"]:
                 return rids[0]
             else:
                 return None
+    """
+    Returns list of rids with given key in given column
+    if there are no rows with given key in given column, return an empty list
+    """
 
-    # returns list of rids with given key in given column
-    # if there are no rows with given key in given column, return an empty list
-    def records_with_rid(self,column,key):
+    def records_with_rid(self, column, key):
         column_index = self.index.get_index_for_column(column)
         # if there is an index, use the index
-        if column_index != None:
+        if column_index is not None:
             return column_index.get(key)
         # otherwise, do linear scan to find rids with given column value
         else:
@@ -691,7 +693,7 @@ class Table:
                 rid_info = self.page_directory.get(key)
                 if rid_info.get('is_base_record') and not rid_info.get('deleted'):
                     record = self.read_record(key)
-                    if(record.user_data[column] == key):
+                    if record.user_data[column] == key:
                         rids_with_value.append(record.get_rid())
             return rids_with_value
 

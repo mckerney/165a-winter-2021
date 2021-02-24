@@ -48,7 +48,7 @@ agg_time_0 = process_time()
 for i in range(0, 10000, 100):
     result = query.sum(i, 100, randrange(0, 5))
 agg_time_1 = process_time()
-print("Aggregate 10k of 100 record batch took:\t", agg_time_1 - agg_time_0)
+print("Aggregate 10k of 100 record batch took:\t\t", agg_time_1 - agg_time_0)
 
 # Measuring Delete Performance
 delete_time_0 = process_time()
