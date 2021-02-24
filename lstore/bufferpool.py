@@ -1,6 +1,6 @@
 from lstore.config import * 
 from lstore.page import *
-
+from datetime import datetime
 
 class Bufferpool:
 
@@ -64,29 +64,40 @@ class Bufferpool:
         """
         Function that evicts a page from the Bufferpool
         """
-        
-        # print('EVICTING')
-
-        least_used_page = float('inf')
+        last_used_page = self.frames[0]
         index = 0
+        frame_index = 0
+        min_accesses = last_used_page.access_count
 
+        """
+        Find pages with least number of accesses
+        """
         for frame in self.frames:
-            if frame.access_count < least_used_page:
-                least_used_page = index
+            if frame.access_count < min_accesses:
+                # clear deletion array, and add current frame
+                min_accesses = frame.access_count
+                last_used_page = frame
+                frame_index = index
+            elif frame.access_count == min_accesses:
+                if frame.time_in_bufferpool < last_used_page.time_in_bufferpool:
+                    # frame is older, make update
+                    min_accesses = frame.access_count
+                    last_used_page = frame
+                    frame_index = index                
             index += 1
 
-        # if self.frames[least_used_page].dirty_bit:
-        #     frame_to_write = self.frames[least_used_page]
-        #     #write_path = self.frames[least_used_page].path_to_page_on_disk
-        #     #all_columns = frame_to_write.all_columns
-        #     #write_to_disk(write_path, all_columns)
-        self.commit_page(least_used_page)
-
-        frame_key = self.frames[least_used_page].tuple_key
-        # print(f'EVICTING {frame_key}')
+        """
+        Remove the oldest, least accessed page
+        """
+        if last_used_page.dirty_bit:
+            write_path = last_used_page.path_to_page_on_disk
+            all_cols = last_used_page.all_columns
+            write_to_disk(write_path, all_cols)
+        
+        frame_key = last_used_page.tuple_key
         del self.frame_directory[frame_key]
-
-        return least_used_page
+        
+        return frame_index
 
     def load_page(self, table_name: str, num_columns: int, page_range_index: int, base_page_index: int,
                   is_base_record: bool):
@@ -113,6 +124,9 @@ class Bufferpool:
 
         # Pin the frame
         self.frames[frame_index].pin_frame()
+
+        # Set time_in_bufferpool to current time
+        self.frames[frame_index].time_in_bufferpool = datetime.now()
 
         # Allocate physical pages for meta data and user data
         self.frames[frame_index].all_columns = [Page(column_num=i) for i in range(num_columns + META_COLUMN_COUNT)]
@@ -153,7 +167,7 @@ class Frame:
         self.all_columns = []   # Initialize at none since different tables have different column counts
         self.dirty_bit = False
         self.pin = False
-        self.time_in_bufferpool = 0
+        self.time_in_bufferpool = 0 # last time the page was accessed
         self.access_count = 0   # number of times page has been accessed
         self.path_to_page_on_disk = path_to_page_on_disk
         self.table_name = table_name
