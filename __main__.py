@@ -1,11 +1,14 @@
 from lstore.db import Database
 from lstore.query import Query
+from lstore.helpers import *
 from time import process_time
 from random import choice, randrange
+import pickle
 
 # Student Id and 4 grades
 db = Database()
-db.open('./class')
+clear_database('./root')
+db.open('./root')
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
 keys = []
@@ -43,9 +46,7 @@ print("Selecting 10k records took:  \t\t\t", select_time_1 - select_time_0)
 # Measuring Aggregate Performance
 agg_time_0 = process_time()
 for i in range(0, 10000, 100):
-    start_value = 906659671 + i
-    end_value = start_value + 100
-    result = query.sum(start_value, end_value - 1, randrange(0, 5))
+    result = query.sum(i, 100, randrange(0, 5))
 agg_time_1 = process_time()
 print("Aggregate 10k of 100 record batch took:\t", agg_time_1 - agg_time_0)
 
@@ -55,3 +56,4 @@ for i in range(0, 10000):
     query.delete(906659671 + i)
 delete_time_1 = process_time()
 print("Deleting 10k records took:  \t\t\t", delete_time_1 - delete_time_0)
+db.close()
