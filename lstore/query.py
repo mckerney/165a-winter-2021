@@ -5,6 +5,7 @@ from lstore.config import *
 from lstore.helpers import *
 from copy import deepcopy
 from math import ceil
+import threading
 
 
 class Query:
@@ -32,7 +33,6 @@ class Query:
             return False
         
         # Once found, update delete value to true in page directory
-
         self.table.page_directory[rid]["deleted"] = True
 
         # remove rid of deleted row from all indexes
@@ -115,9 +115,8 @@ class Query:
                 else:
                     selected_record.user_date[i] = None
             record_return_list.append(selected_record)
-            
-        return record_return_list
 
+        return record_return_list
 
     """
     # Update a record with specified key and columns
@@ -137,6 +136,9 @@ class Query:
         valid_rid = self.table.record_does_exist(key=key)
         if valid_rid is None:
             return False
+
+        self.table.merge_check(valid_rid)
+
         # print(f'*************************** UPDATE FOR {key} ******************************')
         current_record = self.table.read_record(rid=valid_rid)  # read record need to give the MRU
         # print("current_record", current_record.all_columns)
@@ -156,8 +158,8 @@ class Query:
                 # # print(f'ELSE @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                 schema_encoding_as_int = set_bit(value=schema_encoding_as_int, bit_index=i)
                 current_record_data[i] = columns[i]
-        
-        new_tail_record = Record(key=key, rid=valid_rid, base_rid=current_record.all_columns[RID_COLUMN],
+        # print(f'MERGE valid_rid = {valid_rid}')
+        new_tail_record = Record(key=key, rid=None, base_rid=valid_rid,
                                  schema_encoding=schema_encoding_as_int, column_values=current_record_data)
         # print(f'QUERY New Tail Record {new_tail_record.all_columns}')
 
@@ -170,7 +172,7 @@ class Query:
                     old_value = current_record.user_data[i]
                     base_rid = current_record.get_rid()
                     column_index.update(columns_list[i],old_value,base_rid)
-        
+
         return self.table.update_record(updated_record=new_tail_record, rid=valid_rid)
 
     """
