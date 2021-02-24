@@ -39,7 +39,7 @@ class Query:
         record = self.table.read_record(rid)
         for i in range(len(record.user_data)):
             key = record.user_data[i]
-            if self.table.index.indices[i] != None:
+            if self.table.index.indices[i] is not None:
                 self.table.index.get_index_for_column(i).delete(key,rid)
         return True
 
@@ -68,10 +68,9 @@ class Query:
         if did_successfully_write:
             for i in range(len(columns_list)):
                 column_index = self.table.index.get_index_for_column(i)
-                if column_index != None:
-                    column_index.insert(columns_list[i],new_rid)
+                if column_index is not None:
+                    column_index.insert(columns_list[i], new_rid)
 
-            self.table.index
             return True
 
         return False
@@ -86,7 +85,7 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
     def select(self, key, column, query_columns):
-        # Check that the incoming user agruments to select are valid
+        # Check that the incoming user arguments to select are valid
         if column > self.table.num_columns or column < 0:
             # column argument out of range
             print('bad column input 1')
@@ -102,9 +101,9 @@ class Query:
                 return False
 
         # Make sure that the record selected by the user exists in our database
-        valid_rids = self.table.records_with_rid(column,key)
+        valid_rids = self.table.records_with_rid(column, key)
         if len(valid_rids) == 0:
-            print('no valid rids',key,column)
+            print('no valid rids', key, column)
             return False
         record_return_list = []
         for rid in valid_rids:
@@ -163,15 +162,15 @@ class Query:
                                  schema_encoding=schema_encoding_as_int, column_values=current_record_data)
         # print(f'QUERY New Tail Record {new_tail_record.all_columns}')
 
-        #TODO: this is untested, because m2 tester does ever not select non-primary key values
+        # TODO: this is untested, because m2 tester does ever not select non-primary key values
         # updating indices
         for i in range(len(columns_list)):
-            if(columns_list[i] != None):
+            if columns_list[i] is not None:
                 column_index = self.table.index.get_index_for_column(i)
-                if(column_index != None):
+                if column_index is not None:
                     old_value = current_record.user_data[i]
                     base_rid = current_record.get_rid()
-                    column_index.update(columns_list[i],old_value,base_rid)
+                    column_index.update(columns_list[i], old_value, base_rid)
 
         return self.table.update_record(updated_record=new_tail_record, rid=valid_rid)
 
@@ -184,7 +183,6 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum(self, start_range, end_range, aggregate_column_index):
-        # TODO: Once Indexing is implemented need to add logic to support it
         # Check the aggregate_column_index is in range
         if aggregate_column_index < 0 or aggregate_column_index > self.table.num_columns:
             # Invalid user input to sum

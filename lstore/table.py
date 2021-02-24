@@ -674,10 +674,12 @@ class Table:
                 return rids[0]
             else:
                 return None
+    """
+    Returns list of rids with given key in given column
+    if there are no rows with given key in given column, return an empty list
+    """
 
-    # returns list of rids with given key in given column
-    # if there are no rows with given key in given column, return an empty list
-    def records_with_rid(self,column,key):
+    def records_with_rid(self, column, key):
         column_index = self.index.get_index_for_column(column)
         # if there is an index, use the index
         if column_index is not None:
