@@ -6,7 +6,6 @@ from lstore.helpers import *
 from random import choice, randint, sample, seed
 
 path = './ECS165'
-clear_database(path)
 db = Database()
 db.open('./ECS165')
 
