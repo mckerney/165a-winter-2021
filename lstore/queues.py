@@ -49,5 +49,5 @@ class Group:
     Holds queues of Transactions
     """
     def __init__(self):
-        # TODO need to determine amount of Queues, self.queues will be a list of lists
+        # TODO need to determine amount of Queues, self.queues will be a list of deque
         self.queues = []
