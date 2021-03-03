@@ -7,7 +7,6 @@ import pickle
 
 # Student Id and 4 grades
 db = Database()
-clear_database('./root')
 db.open('./root')
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)

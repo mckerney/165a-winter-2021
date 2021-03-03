@@ -24,3 +24,5 @@ BUFFERPOOL_FRAME_COUNT = 75  # 1 frame == 1 base page
 # Merge
 MERGE_COUNT_TRIGGER = 2048
 
+# QueCC
+BATCH_SIZE = 4

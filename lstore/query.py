@@ -3,6 +3,7 @@ from lstore.index import Index
 from lstore.record import Record
 from lstore.config import *
 from lstore.helpers import *
+from lstore.transaction import *
 from copy import deepcopy
 from math import ceil
 import threading
@@ -43,13 +44,22 @@ class Query:
                 self.table.index.get_index_for_column(i).delete(key,rid)
         return True
 
-    """
-    # Insert a record with specified columns
-    # Return True upon successful insertion
-    # Returns False if insert fails for whatever reason
-    """        
+
     def insert(self, *columns):
-        # Check to ensure the insertion data is valid before writing
+        """
+        Create an Insert transaction
+        """
+        xact = Transaction()
+        xact.add_query(self.__insert(), columns)
+        self.table.db_batch.queue_xact(xact)
+
+
+    def __insert(self, *columns):
+        """
+        Insert a record with specified columns
+        Return True upon successful insertion
+        Return False if insert fails for whatever reason
+        """
         unique_identifier = columns[0]
         columns_list = list(columns)
         if len(columns_list) != self.table.num_columns:

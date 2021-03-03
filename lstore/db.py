@@ -1,5 +1,6 @@
 from lstore.table import Table
 from lstore.bufferpool import *
+from lstore.queues import *
 import os
 import shutil
 import pickle
@@ -13,12 +14,16 @@ class Database:
         self.tables = {}
         self.bufferpool = None
         self.root_name = None
+        self.batch = None
+        self.priority_groups = None
 
     def open(self, path):
         """
         Open takes in a path to the root of the file system
         """
         self.bufferpool = Bufferpool(path)
+        self.batch = Batch()
+        self.priority_groups = PriorityGroups()
         # Check if root path already exists and set the root_name
         if os.path.isdir(path):
             self.root_name = path
@@ -104,9 +109,8 @@ class Database:
             raise Exception(f"Sorry the name {name} is already taken")
         else:
             os.mkdir(table_path_name)
-        
-        # TODO : simplify table object down to the bare minimum
-        table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool)
+
+        table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool, batch=self.batch)
         # create default index on primary key
         table.index.create_default_primary_index()
         self.tables[name] = table
@@ -145,7 +149,7 @@ class Database:
 
     def get_table(self, name):
         """
-        # Returns table with the passed name
+        Returns table with the passed name
         """
         print(f'tables = {self.tables}')
         return self.tables[name]
