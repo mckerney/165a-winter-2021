@@ -4,7 +4,6 @@ from lstore.config import *
 from lstore.record import *
 from lstore.helpers import *
 from lstore.bufferpool import *
-from time import time
 import math
 import os
 import pickle
@@ -77,31 +76,6 @@ import threading
 '''
 
 
-class BasePage:
-    """
-    :param num_columns: int         Number of data columns in the BasePage
-    :param parent_key: int          Holds the integer key of the parent Page Range
-    :param bp_key: int              Holds the integer key of itself as it maps to the Parent Page_range list
-    """
-    def __init__(self, num_columns: int, parent_key: int, bp_key: int):
-        # Create a list of Physical Pages num_columns long plus Indirection, RID, TimeStamp, and Schema columns
-        self.columns_list = [Page(column_num=i) for i in range(num_columns + META_COLUMN_COUNT)]
-        self.pr_key = parent_key
-        self.key = bp_key
-        self.tps = 0
-    
-
-class TailPage:
-    """
-    :param num_columns: int         Number of data columns in the TailPage
-    :param key: int                 Holds the integer key of the parent PageRange
-    """
-    def __init__(self, num_columns: int, key: int):
-        self.key = key
-        # Create a list of Physical Pages num_columns long plus Indirection, RID, TimeStamp, and Schema columns
-        self.columns_list = [Page(column_num=i) for i in range(num_columns + META_COLUMN_COUNT)]
-        
-    
 class PageRange:
     """
     :param num_columns: int        Number of data columns in the PageRange
@@ -437,30 +411,6 @@ class Table:
         # print(f'__new_tail_rid = {rid_dict}')
         return rid_dict
 
-    def __get_last_base_page_record_location(self) -> dict:
-        """
-        Helper function that returns a dict of the memory location for a given RID
-        """
-        
-        page_range_index = math.floor(self.num_base_records / ENTRIES_PER_PAGE_RANGE)
-        index = self.num_base_records % ENTRIES_PER_PAGE_RANGE
-        base_page_index = math.floor(index / ENTRIES_PER_PAGE)
-        physical_page_index = index % ENTRIES_PER_PAGE
-
-        return {'page_range': page_range_index, 'base_page': base_page_index, 'page_index': physical_page_index}
-
-    def set_column_name(self, name: str, column_key: int) -> None:
-        """
-        Function that maps a name to a column key in the Table column_names dict
-        :param name: str            Name to map to a column key
-        :param column_key: int      Integer associated with a given data column 
-        """
-        try:
-            self.column_names[column_key] = name
-            return
-        except Exception as e:
-            raise ValueError(f'ERROR: Unable to assign column name. {e}')
-
     def create_new_page_range(self) -> int:
         """
         This function creates a new PageRange for the Table and returns its key index for the Table.page_ranges list
@@ -674,12 +624,12 @@ class Table:
                 return rids[0]
             else:
                 return None
-    """
-    Returns list of rids with given key in given column
-    if there are no rows with given key in given column, return an empty list
-    """
 
     def records_with_rid(self, column, key):
+        """
+        Returns list of rids with given key in given column
+        if there are no rows with given key in given column, return an empty list
+        """
         column_index = self.index.get_index_for_column(column)
         # if there is an index, use the index
         if column_index is not None:

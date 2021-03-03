@@ -2,7 +2,6 @@ from lstore.table import Table
 from lstore.bufferpool import *
 import os
 import shutil
-import json
 import pickle
 
 
@@ -93,14 +92,13 @@ class Database:
 
         return True
 
-    """
-    # create_table makes a new directory inside root called name and adds it to our table directory; makes a new table object
-    :param name: string         # Table name
-    :param num_columns: int     # Number of Columns: all columns are integer
-    :param key: int             # Index of table key in columns
-    """
     def create_table(self, name: str, num_columns: int, key: int) -> Table:
- 
+        """
+        # create_table makes a new directory inside root called name and adds it to our table directory; makes a new table object
+        :param name: string         # Table name
+        :param num_columns: int     # Number of Columns: all columns are integer
+        :param key: int             # Index of table key in columns
+        """
         table_path_name = f"{self.root_name}/{name}"
         if os.path.isdir(table_path_name):
             raise Exception(f"Sorry the name {name} is already taken")
@@ -145,9 +143,9 @@ class Database:
 
         return False
 
-    """
-    # Returns table with the passed name
-    """
     def get_table(self, name):
+        """
+        # Returns table with the passed name
+        """
         print(f'tables = {self.tables}')
         return self.tables[name]

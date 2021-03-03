@@ -1,6 +1,5 @@
 from lstore.page import *
 from lstore.helpers import *
-import os 
 import math
 
 """
@@ -12,7 +11,6 @@ can be indexed through this object. Indices are usually B-Trees, but other data 
 class IndividualIndex:
 
     def __init__(self, table, column_number):
-        # pass
         # a map between column value and RID
         self.index = {}
 
@@ -85,10 +83,11 @@ class IndividualIndex:
                         # print("BASE VAL", val)
                         self.index[val] = (self.index.get(val) or [])+[rid]
 
-        # print(self.index)
 
-    # returns set of rids containing given value
     def get(self, value):
+        """
+        returns set of rids containing given value
+        """
         return self.index.get(value)
 
     def insert(self, value, new_rid):
@@ -110,30 +109,26 @@ class Index:
         # One index for each table. All our empty initially.
         self.indices = [None] * table.num_columns
         self.table = table
-        pass
     
     def create_default_primary_index(self):
         self.create_index(0)
 
-    """
-    # returns the IndividualIndex for given column
-    """
-
     def get_index_for_column(self,column):
+        """
+        # returns the IndividualIndex for given column
+        """
         return self.indices[column]
 
-    """
-    # optional: Create index on specific column
-    """
-
     def create_index(self, column_number):
+        """
+        # optional: Create index on specific column
+        """
         self.indices[column_number] = IndividualIndex(self.table,column_number)
 
-    """
-    # optional: Drop index of specific column
-    """
-
     def drop_index(self, column_number):
+        """
+        # optional: Drop index of specific column
+        """
         if column_number == 0:
             # print('you cannot remove the primary key index')
             return
