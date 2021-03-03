@@ -3,37 +3,36 @@ from lstore.record import *
 from lstore.index import Index
 
 class Transaction:
-
     """
-    # Creates a transaction object.
+    Holds a Query and its arguments as well as relevant data for QueCC planning
     """
     def __init__(self):
-        self.queries = []
+        self.query = None
+        self.rid = None
+        self.timestamp = None
         pass
 
-    """
-    # Adds the given query to this transaction
-    # Example:
-    # q = Query(grades_table)
-    # t = Transaction()
-    # t.add_query(q.update, 0, *[None, 1, None, 2, None])
-    """
-    def add_query(self, query, *args):
-        self.queries.append((query, args))
 
-    # If you choose to implement this differently this method must still return True if transaction commits or False on abort
+    def add_query(self, func, *args):
+        """
+        Adds query methods and arguments to the transaction
+        param func:         Query function
+        param *args:        Query arguments
+        """
+
+        # TODO: consult key index for rid and initialize self.rid
+        # TODO: time stamp Xact
+        self.query = (func, args)
+
     def run(self):
-        for query, args in self.queries:
-            result = query(*args)
-            # If the query has failed the transaction should abort
-            if result == False:
-                return self.abort()
         return self.commit()
 
-    def abort(self):
-        #TODO: do roll-back and any other necessary operations
-        return False
-
     def commit(self):
-        # TODO: commit to database
-        return True
+        """
+        Run the Query
+        """
+
+        query_func = self.query[0]
+        args = self.query[1]
+
+        return query_func(args)

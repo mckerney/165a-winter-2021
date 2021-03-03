@@ -4,6 +4,7 @@ from lstore.config import *
 from lstore.record import *
 from lstore.helpers import *
 from lstore.bufferpool import *
+from lstore.queues import *
 import math
 import os
 import pickle
@@ -99,8 +100,9 @@ class Table:
     :param bufferpool: Bufferpool   Active Bufferpool for the Database
     """
     def __init__(self, name: str, num_columns: int, key: int, path: str = None, bufferpool: Bufferpool = None,
-                 is_new=True):
+                 batch: Batch = None, is_new=True):
         self.name = name
+        self.db_batch = batch
         self.bufferpool = bufferpool
         self.table_path = path
         self.key = key
