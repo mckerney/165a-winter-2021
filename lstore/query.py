@@ -1,9 +1,8 @@
-from lstore.table import Table
-from lstore.index import Index
 from lstore.record import Record
 from lstore.config import *
 from lstore.helpers import *
 from lstore.transaction import *
+
 from copy import deepcopy
 from math import ceil
 import threading
@@ -50,8 +49,10 @@ class Query:
         Create an Insert transaction
         """
         xact = Transaction()
-        xact.add_query('insert', self.__insert(), None, columns)
-        self.table.db_batch.queue_xact(xact)
+        print('BEFORE ADD')
+        xact.add_query(INSERT, self.__insert, None, *columns)
+        self.table.db_batcher.queue_xact(xact)
+        self.table.db_batcher.batch_xact()
 
 
     def __insert(self, *columns):
@@ -60,6 +61,7 @@ class Query:
         Return True upon successful insertion
         Return False if insert fails for whatever reason
         """
+        print(f'columns = {columns}')
         unique_identifier = columns[0]
         columns_list = list(columns)
         if len(columns_list) != self.table.num_columns:
@@ -76,10 +78,13 @@ class Query:
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 
         if did_successfully_write:
+            print('SUCCESSFUL')
             for i in range(len(columns_list)):
                 column_index = self.table.index.get_index_for_column(i)
+                print(f'column_index = {column_index}')
                 if column_index is not None:
                     column_index.insert(columns_list[i], new_rid)
+                    print(f'post insert col index = {column_index.index}')
 
             return True
 

@@ -1,6 +1,6 @@
 from lstore.table import Table
 from lstore.bufferpool import *
-from lstore.queues import *
+from lstore.que_cc import *
 import os
 import shutil
 import pickle
@@ -15,7 +15,6 @@ class Database:
         self.bufferpool = None
         self.root_name = None
         self.batcher = None
-        self.priority_groups = None
 
     def open(self, path):
         """
@@ -23,7 +22,6 @@ class Database:
         """
         self.bufferpool = Bufferpool(path)
         self.batcher = Batcher()
-        self.priority_groups = PriorityGroups()
         # TODO instantiate 2 PlanningWorkers and however many ExecutionWorkers
 
         # Check if root path already exists and set the root_name
@@ -84,6 +82,7 @@ class Database:
             table_name = table_info.get("name")
             table = self.tables[table_name]
             table.record_lock = None
+            table.db_batcher = None
             did_close = table.close_table_page_directory()
 
             if not did_close:
