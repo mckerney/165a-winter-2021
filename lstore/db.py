@@ -96,6 +96,8 @@ class Database:
         
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
+        self.batcher.high_planner.planner_thread.join()
+        self.batcher.executor.exec_thread.join()
 
         return True
 
