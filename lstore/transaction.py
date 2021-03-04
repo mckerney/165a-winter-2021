@@ -1,5 +1,4 @@
-from lstore.query import *
-
+from lstore.config import *
 from datetime import datetime
 
 class Transaction:
@@ -26,12 +25,15 @@ class Transaction:
         param rid:          RID for record being queried if there is one
         param *args:        Query arguments
         """
-
+        print('ENTERING ADD')
         self.query_name = query_name
         self.query_func = func
+        print(f'AFTER ASSIGNMENT {self.query_func}')
 
-        if query_name == 'insert':
-            self.columns = args[0]      # columns
+        if query_name == INSERT:
+            print(f'args = {args}')
+            print(f'args = {args[0]}')
+            self.columns = args      # columns
 
         if query_name == 'delete':
             self.rid = rid
@@ -58,14 +60,12 @@ class Transaction:
             pass
 
     def run(self):
-        return self.commit()
-
-    def commit(self):
         """
         Run the Query
         """
-        if self.query_name == 'insert':
-            return self.query_func(self.columns)
+        if self.query_name == INSERT:
+            print(f'RUN {self.columns}')
+            return self.query_func(*self.columns)
 
         if self.query_name == 'delete':
             return self.query_func(self.key)

@@ -4,7 +4,7 @@ from lstore.config import *
 from lstore.record import *
 from lstore.helpers import *
 from lstore.bufferpool import *
-from lstore.queues import *
+from lstore.que_cc import *
 import math
 import os
 import pickle
@@ -636,6 +636,8 @@ class Table:
         column_index = self.index.get_index_for_column(column)
         # if there is an index, use the index
         if column_index is not None:
+            print(f'records key = {key}')
+            print(f'column_index = {column_index.index}')
             return column_index.get(key)
         # otherwise, do linear scan to find rids with given column value
         else:
