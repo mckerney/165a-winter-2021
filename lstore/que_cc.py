@@ -21,6 +21,7 @@ class Batcher:
         self.high_planner = PlanningWorker(self.high_priority_group, self)
         # self.low_planner = PlanningWorker(self.low_priority_group, self)
         self.executor = ExecutionWorker(self)
+        self.execution_mutex = threading.Lock()
 
     def batch_xact(self):
         """
@@ -37,7 +38,9 @@ class Batcher:
         if len(self.xact_batch) < BATCH_SIZE:
             xact = self.xact_queue.popleft()
             self.xact_batch.append(xact)
-        self.batch_ready = True
+
+        if len(self.xact_batch) == BATCH_SIZE:
+            self.batch_ready = True
 
 
     def queue_xact(self, transaction: Transaction):
@@ -76,9 +79,14 @@ class PlanningWorker:
 
         while run:
             if self.batcher.batch_ready:
-                print('PLANNING')
-                xact = self.batcher.xact_batch.pop()
-                self.group.queues[0].append(xact)
+                print(f'PLANNING: {self.batcher.xact_batch}')
+                for xact in self.batcher.xact_batch:
+                    print(f'IN PLANNING WORKER DO WORK: {xact.query_name}')
+                    xact_pop = self.batcher.xact_batch.pop(0)
+                    print(f'IN PLANNING WORKER xact_pop: {xact_pop.query_name}')
+                    self.group.queues[0].append(xact_pop)
+
+            if len(self.batcher.xact_batch) == 0:
                 self.batcher.batch_ready = False
 
             # time.sleep(0.5)
@@ -90,7 +98,7 @@ class ExecutionWorker:
     """
     def __init__(self, batcher: Batcher):
         self.batcher = batcher
-        self.transaction = None
+        #self.transaction = None
         self.exec_thread = threading.Thread(target=self.do_execution)
         self.exec_thread.daemon = False
         self.exec_thread.start()
@@ -98,18 +106,16 @@ class ExecutionWorker:
     def do_execution(self):
         print('EXECUTE STARTING')
         run = True
-
+        run_count = 0
         while run:
 
-            if len(self.batcher.high_priority_group.queues[0]) == 1:
+            if len(self.batcher.high_priority_group.queues[0]) > 0:
                 print('EXECUTING')
-                self.transaction = self.batcher.high_priority_group.queues[0].popleft()
-                self.transaction.run()
-
-            # time.sleep(0.5)
-
-    def run(self):
-        """
-        Runs a transaction
-        """
-        self.transaction.run()
+                print('LOCKING')
+                self.batcher.execution_mutex.acquire()
+                transaction = self.batcher.high_priority_group.queues[0].popleft()
+                print(f'RUNNING {transaction.query_name}')
+                ret = transaction.run()
+                print(f'ret: {ret}')
+                print('RELEASE')
+                self.batcher.execution_mutex.release()

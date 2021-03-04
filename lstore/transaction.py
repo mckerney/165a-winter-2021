@@ -35,17 +35,20 @@ class Transaction:
             print(f'args = {args[0]}')
             self.columns = args      # columns
 
-        if query_name == 'delete':
+        if query_name == DELETE:
             self.rid = rid
             self.key = args[0]          # key
 
-        if query_name == 'select':
+        if query_name == SELECT:
+            print(f'args[0]:  {args[0]}')
+            print(f'args[1]:  {args[1]}')
+            print(f'args[2]:  {args[2]}')
             self.rid = rid
             self.key = args[0]          # key
             self.column = args[1]       # column
             self.columns = args[2]      # query_columns
 
-        if query_name == 'update':
+        if query_name == UPDATE:
             self.rid = rid
             self.key = args[0]          # key
             self.columns = args[1]      # columns
@@ -71,6 +74,7 @@ class Transaction:
             return self.query_func(self.key)
 
         if self.query_name == 'select':
+            # print(f'RUN {self.columns}')
             return self.query_func(self.key, self.column, self.columns)
 
         if self.query_name == 'update':

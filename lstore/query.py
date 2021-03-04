@@ -90,6 +90,15 @@ class Query:
 
         return False
 
+    def select(self, key, column, query_columns):
+        xact = Transaction()
+        print('BEFORE SELECT')
+        #rid = self.table.record_does_exist(key)
+        #print(f'RID: {rid}')
+        xact.add_query(SELECT, self.__select, None, key, column, query_columns)
+        self.table.db_batcher.queue_xact(xact)
+        self.table.db_batcher.batch_xact()
+
     """
     # Read a record with specified key
     # :param key: the key value to select records based on
@@ -99,7 +108,7 @@ class Query:
     # Returns False if record locked by TPL
     # Assume that select will never be called on a key that doesn't exist
     """
-    def select(self, key, column, query_columns):
+    def __select(self, key, column, query_columns):
         # Check that the incoming user arguments to select are valid
         if column > self.table.num_columns or column < 0:
             # column argument out of range
@@ -130,6 +139,7 @@ class Query:
                     selected_record.user_date[i] = None
             record_return_list.append(selected_record)
 
+        print(f"__SELECT RETURNING {record_return_list[0].user_data}")
         return record_return_list
 
     """
