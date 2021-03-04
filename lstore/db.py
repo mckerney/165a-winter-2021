@@ -14,7 +14,7 @@ class Database:
         self.tables = {}
         self.bufferpool = None
         self.root_name = None
-        self.batch = None
+        self.batcher = None
         self.priority_groups = None
 
     def open(self, path):
@@ -22,8 +22,10 @@ class Database:
         Open takes in a path to the root of the file system
         """
         self.bufferpool = Bufferpool(path)
-        self.batch = Batch()
+        self.batcher = Batcher()
         self.priority_groups = PriorityGroups()
+        # TODO instantiate 2 PlanningWorkers and however many ExecutionWorkers
+
         # Check if root path already exists and set the root_name
         if os.path.isdir(path):
             self.root_name = path
@@ -51,7 +53,8 @@ class Database:
             path_to_table = self.table_directory[table_name].get("table_path_name")
             num_columns = self.table_directory[table_name].get("num_columns")
             table_key = self.table_directory[table_name].get("key")
-            temp_table = Table(name=table_name, num_columns=num_columns, key=table_key, path=path_to_table, bufferpool=self.bufferpool, is_new=False)
+            temp_table = Table(name=table_name, num_columns=num_columns, key=table_key, path=path_to_table,
+                               bufferpool=self.bufferpool, batcher=self.batcher, is_new=False)
             path_to_page_directory = f"{path_to_table}/page_directory.pkl"
             with open(path_to_page_directory, "rb") as page_directory:
                 temp_table.page_directory = pickle.load(page_directory)
@@ -110,7 +113,7 @@ class Database:
         else:
             os.mkdir(table_path_name)
 
-        table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool, batch=self.batch)
+        table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool, batcher=self.batcher)
         # create default index on primary key
         table.index.create_default_primary_index()
         self.tables[name] = table

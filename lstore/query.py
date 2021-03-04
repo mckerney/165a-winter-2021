@@ -50,7 +50,7 @@ class Query:
         Create an Insert transaction
         """
         xact = Transaction()
-        xact.add_query(self.__insert(), columns)
+        xact.add_query('insert', self.__insert(), None, columns)
         self.table.db_batch.queue_xact(xact)
 
 

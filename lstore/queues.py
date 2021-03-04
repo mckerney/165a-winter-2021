@@ -2,7 +2,7 @@ from collections import deque
 from lstore.transaction import Transaction
 from lstore.config import *
 
-class Batch:
+class Batcher:
     """
     Holds Transactions ready for consumption by PlanningWorkers
     Queue fills as Xacts come in and get then get moved to a batch until it fills
@@ -12,6 +12,7 @@ class Batch:
     def __init__(self):
         self.xact_queue = deque()
         self.xact_batch = []
+        self.batch_ready = False
         pass
 
     def batch_xact(self):
@@ -22,8 +23,8 @@ class Batch:
         TODO config would determine batch size, may want to align group queue count
         
         If the batch is full we would need to let the PlanningWorkers know the Batch is ready for consumption
-        also need to determine how to handle partial batches for consumption
-        
+        also need to determine how to handle partial batches for consumption. If queue is empty and batch isn't
+        full then process the batch
         """
         if len(self.xact_batch) < BATCH_SIZE:
             xact = self.xact_queue.popleft()
