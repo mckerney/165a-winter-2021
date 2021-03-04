@@ -100,9 +100,9 @@ class Table:
     :param bufferpool: Bufferpool   Active Bufferpool for the Database
     """
     def __init__(self, name: str, num_columns: int, key: int, path: str = None, bufferpool: Bufferpool = None,
-                 batch: Batch = None, is_new=True):
+                 batcher: Batcher = None, is_new=True):
         self.name = name
-        self.db_batch = batch
+        self.db_batcher = batcher
         self.bufferpool = bufferpool
         self.table_path = path
         self.key = key
@@ -338,11 +338,12 @@ class Table:
         Function that creates a new RID, increments the amount of records in the table,
         then creates a RID dict that is mapped in the Table page_directory.
         """
+        # TODO acquire lock
         rid = self.num_records
         self.num_records += 1
         self.page_directory[rid] = self.__new_base_rid_dict()
         self.num_base_records += 1
-
+        # TODO release lock
         return rid
 
     def __new_base_rid_dict(self) -> dict:

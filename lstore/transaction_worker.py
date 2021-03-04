@@ -22,6 +22,19 @@ class PlanningWorker(TransactionWorker):
     def enqueue_priority_group(self):
         pass
 
+    def activate_worker(self):
+        run = True
+        while run:
+            # checking
+            # maki
+            #
+            #
+            # if batcher.batch_ready
+            #     consume batch
+            #
+            # sleep
+
+
 
 class ExecutionWorker(TransactionWorker):
     """
