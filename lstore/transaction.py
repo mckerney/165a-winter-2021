@@ -1,39 +1,83 @@
-from lstore.table import *
-from lstore.record import *
-from lstore.index import Index
+from lstore.config import *
+from datetime import datetime
 
 class Transaction:
-
     """
-    # Creates a transaction object.
+    Holds a Query and its arguments as well as relevant data for QueCC planning
     """
     def __init__(self):
-        self.queries = []
-        pass
+        self.query_name = None
+        self.query_func = None
+        self.rid = None
+        self.timestamp = datetime.now()
+        self.key = None
+        self.column = None
+        self.columns = None
+        self.start_range = None
+        self.end_range = None
 
-    """
-    # Adds the given query to this transaction
-    # Example:
-    # q = Query(grades_table)
-    # t = Transaction()
-    # t.add_query(q.update, 0, *[None, 1, None, 2, None])
-    """
-    def add_query(self, query, *args):
-        self.queries.append((query, args))
 
-    # If you choose to implement this differently this method must still return True if transaction commits or False on abort
+    def add_query(self, query_name: str, func, rid: int=None, *args):
+        """
+        Adds query methods and arguments to the transaction
+        param query_name:   Name of query function
+        param func:         Query function
+        param rid:          RID for record being queried if there is one
+        param *args:        Query arguments
+        """
+        print('ENTERING ADD')
+        self.query_name = query_name
+        self.query_func = func
+        print(f'AFTER ASSIGNMENT {self.query_func}')
+
+        if query_name == INSERT:
+            print(f'args = {args}')
+            print(f'args = {args[0]}')
+            self.columns = args      # columns
+
+        if query_name == 'delete':
+            self.rid = rid
+            self.key = args[0]          # key
+
+        if query_name == 'select':
+            self.rid = rid
+            self.key = args[0]          # key
+            self.column = args[1]       # column
+            self.columns = args[2]      # query_columns
+
+        if query_name == 'update':
+            self.rid = rid
+            self.key = args[0]          # key
+            self.columns = args[1]      # columns
+
+        if query_name == 'sum':
+            # TODO: consult key index for rid and initialize self.rid for all involved? Might want to wrap each read?
+            self.start_range = args[0]  # start_range
+            self.end_range = args[1]    # end_range
+            self.column = args[2]       # aggregate_column_index
+
+        if query_name == 'increment':
+            pass
+
     def run(self):
-        for query, args in self.queries:
-            result = query(*args)
-            # If the query has failed the transaction should abort
-            if result == False:
-                return self.abort()
-        return self.commit()
+        """
+        Run the Query
+        """
+        if self.query_name == INSERT:
+            print(f'RUN {self.columns}')
+            return self.query_func(*self.columns)
 
-    def abort(self):
-        #TODO: do roll-back and any other necessary operations
-        return False
+        if self.query_name == 'delete':
+            return self.query_func(self.key)
 
-    def commit(self):
-        # TODO: commit to database
-        return True
+        if self.query_name == 'select':
+            return self.query_func(self.key, self.column, self.columns)
+
+        if self.query_name == 'update':
+            return self.query_func(self.key, self.columns)
+
+        if self.query_name == 'sum':
+            return self.query_func(self.start_range, self.end_range, self.column)
+
+        if self.query_name == 'increment':
+            return

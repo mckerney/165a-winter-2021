@@ -1,5 +1,6 @@
 from lstore.table import Table
 from lstore.bufferpool import *
+from lstore.que_cc import *
 import os
 import shutil
 import pickle
@@ -13,12 +14,16 @@ class Database:
         self.tables = {}
         self.bufferpool = None
         self.root_name = None
+        self.batcher = None
 
     def open(self, path):
         """
         Open takes in a path to the root of the file system
         """
         self.bufferpool = Bufferpool(path)
+        self.batcher = Batcher()
+        # TODO instantiate 2 PlanningWorkers and however many ExecutionWorkers
+
         # Check if root path already exists and set the root_name
         if os.path.isdir(path):
             self.root_name = path
@@ -46,7 +51,8 @@ class Database:
             path_to_table = self.table_directory[table_name].get("table_path_name")
             num_columns = self.table_directory[table_name].get("num_columns")
             table_key = self.table_directory[table_name].get("key")
-            temp_table = Table(name=table_name, num_columns=num_columns, key=table_key, path=path_to_table, bufferpool=self.bufferpool, is_new=False)
+            temp_table = Table(name=table_name, num_columns=num_columns, key=table_key, path=path_to_table,
+                               bufferpool=self.bufferpool, batcher=self.batcher, is_new=False)
             path_to_page_directory = f"{path_to_table}/page_directory.pkl"
             with open(path_to_page_directory, "rb") as page_directory:
                 temp_table.page_directory = pickle.load(page_directory)
@@ -76,6 +82,7 @@ class Database:
             table_name = table_info.get("name")
             table = self.tables[table_name]
             table.record_lock = None
+            table.db_batcher = None
             did_close = table.close_table_page_directory()
 
             if not did_close:
@@ -104,9 +111,8 @@ class Database:
             raise Exception(f"Sorry the name {name} is already taken")
         else:
             os.mkdir(table_path_name)
-        
-        # TODO : simplify table object down to the bare minimum
-        table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool)
+
+        table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool, batcher=self.batcher)
         # create default index on primary key
         table.index.create_default_primary_index()
         self.tables[name] = table
@@ -145,7 +151,7 @@ class Database:
 
     def get_table(self, name):
         """
-        # Returns table with the passed name
+        Returns table with the passed name
         """
         print(f'tables = {self.tables}')
         return self.tables[name]

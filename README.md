@@ -1,4 +1,4 @@
-# ECS165A - Milestone 2
+# ECS165A - Milestone 3
 
 ![](miscellaneous/l-store.png)
 
