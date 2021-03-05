@@ -9,11 +9,15 @@ class Transaction:
         self.id = None
         self.queries = []
         self.queries_returned = 0
+        self.results = None
         self.timestamp = datetime.now()
 
-    def commit(self):
-        # TODO return True when we know every QueryOp in the transaction has completed
-        return True
+    def set_return_values(self, ret_list: list):
+        self.results = ret_list
+
+    def get_return_values(self):
+        return self.results
+
 
 
 class QueryOp:
