@@ -1,8 +1,8 @@
-from lstore.table import Table
-from lstore.index import Index
 from lstore.record import Record
 from lstore.config import *
 from lstore.helpers import *
+from lstore.transaction import *
+
 from copy import deepcopy
 from math import ceil
 import threading
@@ -43,13 +43,24 @@ class Query:
                 self.table.index.get_index_for_column(i).delete(key,rid)
         return True
 
-    """
-    # Insert a record with specified columns
-    # Return True upon successful insertion
-    # Returns False if insert fails for whatever reason
-    """        
+
     def insert(self, *columns):
-        # Check to ensure the insertion data is valid before writing
+        """
+        Create an Insert transaction
+        """
+        q_op = QueryOp()
+        print('BEFORE ADD')
+        q_op.add_query(INSERT, self.__insert, None, *columns)
+        return q_op
+
+
+    def __insert(self, *columns):
+        """
+        Insert a record with specified columns
+        Return True upon successful insertion
+        Return False if insert fails for whatever reason
+        """
+        print(f'columns = {columns}')
         unique_identifier = columns[0]
         columns_list = list(columns)
         if len(columns_list) != self.table.num_columns:
@@ -66,14 +77,25 @@ class Query:
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 
         if did_successfully_write:
+            print('SUCCESSFUL')
             for i in range(len(columns_list)):
                 column_index = self.table.index.get_index_for_column(i)
+                print(f'column_index = {column_index}')
                 if column_index is not None:
                     column_index.insert(columns_list[i], new_rid)
+                    print(f'post insert col index = {column_index.index}')
 
             return True
 
         return False
+
+    def select(self, key, column, query_columns):
+        q_op = QueryOp()
+        # print('BEFORE SELECT')
+        #rid = self.table.record_does_exist(key)
+        #print(f'RID: {rid}')
+        q_op.add_query(SELECT, self.__select, None, key, column, query_columns)
+        return q_op
 
     """
     # Read a record with specified key
@@ -84,7 +106,7 @@ class Query:
     # Returns False if record locked by TPL
     # Assume that select will never be called on a key that doesn't exist
     """
-    def select(self, key, column, query_columns):
+    def __select(self, key, column, query_columns):
         # Check that the incoming user arguments to select are valid
         if column > self.table.num_columns or column < 0:
             # column argument out of range
@@ -115,6 +137,7 @@ class Query:
                     selected_record.user_date[i] = None
             record_return_list.append(selected_record)
 
+        print(f"__SELECT RETURNING {record_return_list[0].user_data}")
         return record_return_list
 
     """
