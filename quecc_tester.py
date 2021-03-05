@@ -4,7 +4,7 @@ from lstore.transaction import *
 from lstore.helpers import *
 import threading
 
-# QUERIES NEED TO BE APPENDED IN ORDER OF
+# QUERIES NEED TO BE APPENDED IN ORDER OF INSTANTIATION
 
 def m3_tester():
     path = './MS3'
