@@ -49,7 +49,6 @@ class Query:
         Create an Insert transaction
         """
         q_op = QueryOp()
-        print('BEFORE ADD')
         q_op.add_query(INSERT, self.__insert, None, *columns)
         return q_op
 
@@ -77,13 +76,13 @@ class Query:
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 
         if did_successfully_write:
-            print('SUCCESSFUL')
+            print('INSERT SUCCESSFUL')
             for i in range(len(columns_list)):
                 column_index = self.table.index.get_index_for_column(i)
-                print(f'column_index = {column_index}')
+                # print(f'column_index = {column_index}')
                 if column_index is not None:
                     column_index.insert(columns_list[i], new_rid)
-                    print(f'post insert col index = {column_index.index}')
+                    # print(f'post insert col index = {column_index.index}')
 
             return True
 

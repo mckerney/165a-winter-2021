@@ -45,14 +45,10 @@ class QueryOp:
         param rid:          RID for record being queried if there is one
         param *args:        Query arguments
         """
-        print('ENTERING ADD')
         self.query_name = query_name
         self.query_func = func
-        print(f'AFTER ASSIGNMENT {self.query_func}')
 
         if query_name == INSERT:
-            print(f'args = {args}')
-            print(f'args = {args[0]}')
             self.key = args[0]
             self.columns = args      # columns
 
@@ -61,9 +57,6 @@ class QueryOp:
             self.key = args[0]          # key
 
         if query_name == SELECT:
-            print(f'args[0]:  {args[0]}')
-            print(f'args[1]:  {args[1]}')
-            print(f'args[2]:  {args[2]}')
             self.rid = rid
             self.key = args[0]          # key
             self.column = args[1]       # column
