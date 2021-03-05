@@ -54,6 +54,7 @@ class Batcher:
 
             if len(self.xact_batch) == BATCH_SIZE or len(self.xact_queue) == 0:
                 print("BATCH equals BATCH_SIZE or QUEUE is EMPTY")
+                self.xact_batch.sort(key=lambda xacts: xacts.timestamp)
                 self.batch_ready = True
 
     def enqueue_xact(self, transaction: Transaction):
@@ -93,28 +94,22 @@ class PlanningWorker:
 
             time.sleep(.5)
 
-
             if self.batcher.batch_ready:
                 print(f'PLANNING: {self.batcher.xact_batch}')
-
-                # TODO select transaction by it's age, oldest first
-
-                # TODO NICK Sort transactions based on timestamp
-                self.batcher.xact_batch.sort(key = lambda xact:xact.timestamp)
-
+                # moved sort to batch ready check
                 for xact in self.batcher.xact_batch:
 
+                    print(f'xact timestamp = {xact.timestamp}')
                     xact.id = self.batcher.xact_count
                     self.batcher.transaction.append(xact)
                     self.batcher.xact_meta_data[xact.id] = [len(xact.queries), [], False]
                     print("Length of queries", len(xact.queries))
                     self.batcher.xact_count += 1
                     xact_pop = self.batcher.xact_batch.pop(0)
-                    
-                    # TODO NICK Sort query list based on timestamp
-                    xact_pop.queries.sort(key = lambda query:query.timestamp)
+
                     for query in xact_pop.queries:
                         print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
+                        print(f'queue_op timestamp = {query.timestamp}')
                         query.set_xact_id(xact.id)
                         index = query.key % PRIORITY_QUEUE_COUNT
                         self.group.queues[index].append(query)
