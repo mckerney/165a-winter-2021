@@ -18,7 +18,7 @@ class Batcher:
         self.batch_ready = False
         self.xact_count = 0
         self.xact_meta_data = {
-            # xact_id : [len of queries list, amount of queries returned]
+            # xact_id : [len of queries list, [], False]
         }
         self.high_priority_group = Group()
         self.low_priority_group = Group()
@@ -47,7 +47,7 @@ class Batcher:
             self.batch_ready = True
 
 
-    def queue_xact(self, transaction: Transaction):
+    def enqueue_xact(self, transaction: Transaction):
         print('QUEUEING')
         self.xact_queue.append(transaction)
 
@@ -84,23 +84,34 @@ class PlanningWorker:
                 print(f'PLANNING: {self.batcher.xact_batch}')
 
                 # TODO select transaction by it's age, oldest first
-                # TODO sort list first?
 
+                # TODO NICK Sort transactions based on timestamp
                 for xact in self.batcher.xact_batch:
 
                     xact.id = self.batcher.xact_count
-                    self.batcher.xact_meta_data[xact.id] = [len(xact.queries), 0]
+                    self.batcher.xact_meta_data[xact.id] = [len(xact.queries), [], False]
                     self.batcher.xact_count += 1
                     xact_pop = self.batcher.xact_batch.pop(0)
 
+                    # TODO NICK Sort query list based on timestamp
                     for query in xact_pop.queries:
-                        print(f'IN PLANNING WORKER DO WORK: {xact.query_name}')
+                        print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
                         query.set_xact_id(xact.id)
                         index = query.key % PRIORITY_QUEUE_COUNT
                         self.group.queues[index].append(query)
 
             if len(self.batcher.xact_batch) == 0:
                 self.batcher.batch_ready = False
+
+            if self.is_done_running():
+                run = False
+
+    def is_done_running(self):
+        is_done = False
+        if len(self.batcher.xact_queue) == 0:
+            is_done = True
+
+        return is_done
 
 
 class ExecutionWorker:
@@ -109,7 +120,6 @@ class ExecutionWorker:
     """
     def __init__(self, batcher: Batcher):
         self.batcher = batcher
-        #self.transaction = None
         self.exec_thread = threading.Thread(target=self.do_execution)
         self.exec_thread.daemon = False
         self.exec_thread.start()
@@ -117,7 +127,6 @@ class ExecutionWorker:
     def do_execution(self):
         print('EXECUTE STARTING')
         run = True
-        run_count = 0
         while run:
 
             if len(self.batcher.high_priority_group.queues[0]) > 0:
@@ -127,10 +136,20 @@ class ExecutionWorker:
                 q_op = self.batcher.high_priority_group.queues[0].popleft()
                 print(f'RUNNING {q_op.query_name}')
                 ret = q_op.run()
-                self.batcher.xact_meta_data[q_op.xact_id][1] += 1
+                self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)
 
-                # TODO: check if Xact is complete
+                # check if Xact is complete
+                if self.batcher.xact_meta_data[q_op.xact_id][0] == len(self.batcher.xact_meta_data[q_op.xact_id][1]):
+                    self.batcher.xact_meta_data[q_op.xact_id][2] = True
 
-                print(f'ret: {ret}')
-                print('RELEASE')
+            if self.is_done_running():
+                run = False
+
+    def is_done_running(self):
+        is_done = True
+        for transaction in self.batcher.xact_meta_data:
+            if not self.batcher.xact_meta_data[transaction][2]:
+                is_done = False
+
+        return is_done
 
