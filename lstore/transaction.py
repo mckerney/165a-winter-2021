@@ -49,6 +49,7 @@ class QueryOp:
         if query_name == INSERT:
             print(f'args = {args}')
             print(f'args = {args[0]}')
+            self.key = args[0]
             self.columns = args      # columns
 
         if query_name == DELETE:
