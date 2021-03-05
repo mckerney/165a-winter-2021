@@ -28,7 +28,6 @@ class QueryOp:
         self.xact_id = None
         self.query_name = None
         self.query_func = None
-        self.rid = None
         self.timestamp = datetime.now()
         self.key = None
         self.column = None
@@ -39,7 +38,7 @@ class QueryOp:
     def set_xact_id(self, xact_id: int):
         self.xact_id = xact_id
 
-    def add_query(self, query_name: str, func, rid: int=None, *args):
+    def add_query(self, query_name: str, func, *args):
         """
         Adds query methods and arguments to the transaction
         param query_name:   Name of query function
@@ -55,17 +54,14 @@ class QueryOp:
             self.columns = args      # columns
 
         if query_name == DELETE:
-            self.rid = rid
             self.key = args[0]          # key
 
         if query_name == SELECT:
-            self.rid = rid
             self.key = args[0]          # key
             self.column = args[1]       # column
             self.columns = args[2]      # query_columns
 
         if query_name == UPDATE:
-            self.rid = rid
             self.key = args[0]          # key
             self.columns = args[1]      # columns
 
