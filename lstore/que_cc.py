@@ -45,14 +45,16 @@ class Batcher:
         fills a batch with transactions from the xact_queue
         """
         print('BATCHING transactions')
-        if len(self.xact_batch) < BATCH_SIZE:
-            print("BATCH < BATCH_SIZE")
-            xact = self.xact_queue.popleft()
-            self.xact_batch.append(xact)
+        for i in range(BATCH_SIZE + 1):
 
-        if len(self.xact_batch) == BATCH_SIZE or len(self.xact_queue) == 0:
-            print("BATCH equals BATCH_SIZE or QUEUE is EMPTY")
-            self.batch_ready = True
+            if len(self.xact_batch) < BATCH_SIZE:
+                print("BATCH < BATCH_SIZE")
+                xact = self.xact_queue.popleft()
+                self.xact_batch.append(xact)
+
+            if len(self.xact_batch) == BATCH_SIZE or len(self.xact_queue) == 0:
+                print("BATCH equals BATCH_SIZE or QUEUE is EMPTY")
+                self.batch_ready = True
 
     def enqueue_xact(self, transaction: Transaction):
         print(f'QUEUEING {transaction}')
