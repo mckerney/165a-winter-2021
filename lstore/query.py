@@ -48,11 +48,10 @@ class Query:
         """
         Create an Insert transaction
         """
-        xact = Transaction()
+        q_op = QueryOp()
         print('BEFORE ADD')
-        xact.add_query(INSERT, self.__insert, None, *columns)
-        self.table.db_batcher.queue_xact(xact)
-        self.table.db_batcher.batch_xact()
+        q_op.add_query(INSERT, self.__insert, None, *columns)
+        return q_op
 
 
     def __insert(self, *columns):
@@ -91,13 +90,12 @@ class Query:
         return False
 
     def select(self, key, column, query_columns):
-        xact = Transaction()
-        print('BEFORE SELECT')
+        q_op = QueryOp()
+        # print('BEFORE SELECT')
         #rid = self.table.record_does_exist(key)
         #print(f'RID: {rid}')
-        xact.add_query(SELECT, self.__select, None, key, column, query_columns)
-        self.table.db_batcher.queue_xact(xact)
-        self.table.db_batcher.batch_xact()
+        q_op.add_query(SELECT, self.__select, None, key, column, query_columns)
+        return q_op
 
     """
     # Read a record with specified key

@@ -6,6 +6,20 @@ class Transaction:
     Holds a Query and its arguments as well as relevant data for QueCC planning
     """
     def __init__(self):
+        self.id = None
+        self.queries = []
+        self.queries_returned = 0
+        self.timestamp = datetime.now()
+
+    def commit(self):
+        # TODO return True when we know every QueryOp in the transaction has completed
+        return True
+
+
+class QueryOp:
+
+    def __init__(self):
+        self.xact_id = None
         self.query_name = None
         self.query_func = None
         self.rid = None
@@ -16,6 +30,8 @@ class Transaction:
         self.start_range = None
         self.end_range = None
 
+    def set_xact_id(self, xact_id: int):
+        self.xact_id = xact_id
 
     def add_query(self, query_name: str, func, rid: int=None, *args):
         """

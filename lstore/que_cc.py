@@ -16,6 +16,10 @@ class Batcher:
         self.xact_queue = deque()
         self.xact_batch = []
         self.batch_ready = False
+        self.xact_count = 0
+        self.xact_meta_data = {
+            # xact_id : [len of queries list, amount of queries returned]
+        }
         self.high_priority_group = Group()
         self.low_priority_group = Group()
         self.high_planner = PlanningWorker(self.high_priority_group, self)
@@ -70,26 +74,33 @@ class PlanningWorker:
         self.planner_thread.daemon = False
         self.planner_thread.start()
 
-    def enqueue_priority_group(self):
-        pass
-
     def do_work(self):
         print('WORK STARTING')
         run = True
 
         while run:
+
             if self.batcher.batch_ready:
                 print(f'PLANNING: {self.batcher.xact_batch}')
+
+                # TODO select transaction by it's age, oldest first
+                # TODO sort list first?
+
                 for xact in self.batcher.xact_batch:
-                    print(f'IN PLANNING WORKER DO WORK: {xact.query_name}')
+
+                    xact.id = self.batcher.xact_count
+                    self.batcher.xact_meta_data[xact.id] = [len(xact.queries), 0]
+                    self.batcher.xact_count += 1
                     xact_pop = self.batcher.xact_batch.pop(0)
-                    print(f'IN PLANNING WORKER xact_pop: {xact_pop.query_name}')
-                    self.group.queues[0].append(xact_pop)
+
+                    for query in xact_pop.queries:
+                        print(f'IN PLANNING WORKER DO WORK: {xact.query_name}')
+                        query.set_xact_id(xact.id)
+                        index = query.key % PRIORITY_QUEUE_COUNT
+                        self.group.queues[index].append(query)
 
             if len(self.batcher.xact_batch) == 0:
                 self.batcher.batch_ready = False
-
-            # time.sleep(0.5)
 
 
 class ExecutionWorker:
@@ -112,10 +123,14 @@ class ExecutionWorker:
             if len(self.batcher.high_priority_group.queues[0]) > 0:
                 print('EXECUTING')
                 print('LOCKING')
-                self.batcher.execution_mutex.acquire()
-                transaction = self.batcher.high_priority_group.queues[0].popleft()
-                print(f'RUNNING {transaction.query_name}')
-                ret = transaction.run()
+
+                q_op = self.batcher.high_priority_group.queues[0].popleft()
+                print(f'RUNNING {q_op.query_name}')
+                ret = q_op.run()
+                self.batcher.xact_meta_data[q_op.xact_id][1] += 1
+
+                # TODO: check if Xact is complete
+
                 print(f'ret: {ret}')
                 print('RELEASE')
-                self.batcher.execution_mutex.release()
+

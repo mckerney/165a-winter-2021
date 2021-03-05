@@ -22,7 +22,8 @@ class Database:
         """
         self.bufferpool = Bufferpool(path)
         self.batcher = Batcher()
-        # TODO instantiate 2 PlanningWorkers and however many ExecutionWorkers
+
+        # TODO spawn a main thread that doesn't close until db.close is called, so we can join out other threads
 
         # Check if root path already exists and set the root_name
         if os.path.isdir(path):
