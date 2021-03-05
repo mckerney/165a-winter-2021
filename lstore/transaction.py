@@ -1,4 +1,6 @@
 from lstore.config import *
+from lstore.db import *
+
 from datetime import datetime
 
 class Transaction:
@@ -81,7 +83,7 @@ class QueryOp:
         Run the Query
         """
         if self.query_name == INSERT:
-            print(f'RUN {self.columns}')
+            # print(f'RUN {self.columns}')
             return self.query_func(*self.columns)
 
         if self.query_name == 'delete':

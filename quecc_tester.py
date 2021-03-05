@@ -4,6 +4,8 @@ from lstore.transaction import *
 from lstore.helpers import *
 import threading
 
+# QUERIES NEED TO BE APPENDED IN ORDER OF
+
 def m3_tester():
     path = './MS3'
     clear_database(path)
@@ -40,10 +42,12 @@ def m3_tester():
 
     transaction5 = Transaction()
     query_7 = query.insert(*[4, 7, 8, 9, 10])
+    query_9 = query.select(5,0,[1, 1, 1, 1, 1])
     transaction5.queries.append(query_7)
+    transaction5.queries.append(query_9)
     db.batcher.enqueue_xact(transaction5)
 
-    db.batcher.batch_xact()
+
     db.close()
 
 main_thread = threading.Thread(target=m3_tester)

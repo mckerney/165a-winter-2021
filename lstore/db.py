@@ -80,8 +80,9 @@ class Database:
         table_directory_file.close()
 
         # Thread cleanup
-        # TODO need to have a way to see if all transactions that have been submitted have completed, sleep is temporary
-        time.sleep(5)
+        while self.batcher.xacts_queued != self.batcher.xacts_completed:
+            time.sleep(.5)
+
         print(f'KILLING THREADS')
         self.batcher.kill_threads()
 
