@@ -1,6 +1,7 @@
 from lstore.table import Table
 from lstore.bufferpool import *
 from lstore.que_cc import *
+import time
 import os
 import shutil
 import pickle
@@ -78,6 +79,12 @@ class Database:
         pickle.dump(self.table_directory, table_directory_file)
         table_directory_file.close()
 
+        # Thread cleanup
+        # TODO need to have a way to see if all transactions that have been submitted have completed, sleep is temporary
+        time.sleep(5)
+        print(f'KILLING THREADS')
+        self.batcher.kill_threads()
+
         # go through every table and save the page directories
         for table_info in self.table_directory.values():
             table_name = table_info.get("name")
@@ -97,8 +104,6 @@ class Database:
         
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
-        self.batcher.high_planner.planner_thread.join()
-        self.batcher.executor.exec_thread.join()
 
         return True
 

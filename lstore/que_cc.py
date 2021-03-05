@@ -14,6 +14,7 @@ class Batcher:
 
     def __init__(self):
         self.xact_queue = deque()
+        self.kill_thread = False
         self.xact_batch = []
         self.batch_ready = False
         self.xact_count = 0
@@ -36,30 +37,25 @@ class Batcher:
 
         return executor_list
 
+    def kill_threads(self):
+        self.kill_thread = True
+
     def batch_xact(self):
         """
         fills a batch with transactions from the xact_queue
         """
-        """
-        TODO config would determine batch size, may want to align group queue count
-        
-        If the batch is full we would need to let the PlanningWorkers know the Batch is ready for consumption
-        also need to determine how to handle partial batches for consumption. If queue is empty and batch isn't
-        full then process the batch
-        """
-        print('BATCHING')
+        print('BATCHING transactions')
         if len(self.xact_batch) < BATCH_SIZE:
-            print("IF 1")
+            print("BATCH < BATCH_SIZE")
             xact = self.xact_queue.popleft()
             self.xact_batch.append(xact)
 
         if len(self.xact_batch) == BATCH_SIZE or len(self.xact_queue) == 0:
-            print("IF 2")
+            print("BATCH equals BATCH_SIZE or QUEUE is EMPTY")
             self.batch_ready = True
 
-
     def enqueue_xact(self, transaction: Transaction):
-        print('QUEUEING')
+        print(f'QUEUEING {transaction}')
         self.xact_queue.append(transaction)
 
 
@@ -81,18 +77,25 @@ class PlanningWorker:
     def __init__(self, priority_group: Group, batcher: Batcher):
         self.group = priority_group
         self.batcher = batcher
-        self.planner_thread = threading.Thread(target=self.do_work)
+        self.planner_thread = threading.Thread(target=self.do_work, args=(lambda : self.batcher.kill_thread,))
         self.planner_thread.daemon = False
         self.planner_thread.start()
 
+    def do_work(self, stop):
+        print('PLANNER STARTING')
 
-    def do_work(self):
-        print('WORK STARTING')
-        run = True
+        while True:
 
-        while run:
+            if stop():
+                break
+
+            time.sleep(.5)
+
+
             if self.batcher.batch_ready:
                 print(f'PLANNING: {self.batcher.xact_batch}')
+
+                # TODO select transaction by it's age, oldest first
 
                 # TODO NICK Sort transactions based on timestamp
                 for xact in self.batcher.xact_batch:
@@ -114,13 +117,6 @@ class PlanningWorker:
             if len(self.batcher.xact_batch) == 0:
                 self.batcher.batch_ready = False
 
-    def is_done_running(self):
-        is_done = False
-        if len(self.batcher.xact_queue) == 0:
-            is_done = True
-
-        return is_done
-
 
 class ExecutionWorker:
     """
@@ -129,17 +125,22 @@ class ExecutionWorker:
     def __init__(self, batcher: Batcher, queue_index: int):
         self.batcher = batcher
         self.assigned_index = queue_index
-        self.exec_thread = threading.Thread(target=self.do_execution)
+        self.exec_thread = threading.Thread(target=self.do_execution, args=(lambda : self.batcher.kill_thread,))
         self.exec_thread.daemon = False
         self.exec_thread.start()
 
-    def do_execution(self):
-        print('EXECUTE STARTING')
-        run = True
-        while run:
-            # Check if there is something in the queue
+    def do_execution(self, stop):
+        print(f'EXECUTOR {self.assigned_index} STARTING')
+
+        while True:
+
+            if stop():
+                break
+
+            time.sleep(.5)
+
             if len(self.batcher.high_priority_group.queues[self.assigned_index]) > 0:
-                print('EXECUTING')
+                print(f'EXECUTING {self.assigned_index}')
 
                 q_op = self.batcher.high_priority_group.queues[self.assigned_index].popleft()
                 print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
@@ -148,19 +149,9 @@ class ExecutionWorker:
 
                 # check if transaction is complete
                 if self.batcher.xact_meta_data[q_op.xact_id][0] == len(self.batcher.xact_meta_data[q_op.xact_id][1]):
-                    print("DONE")
+                    print(f'DONE {self.assigned_index}')
                     self.batcher.xact_meta_data[q_op.xact_id][2] = True
                     ret_list = self.batcher.xact_meta_data[q_op.xact_id][1]
                     print(f"WORKER {self.assigned_index} RETURNED: {ret_list}")
                     finished_xact = self.batcher.transaction[q_op.xact_id]
                     finished_xact.set_return_values(ret_list)
-
-
-    def is_done_running(self):
-        is_done = True
-        for transaction in self.batcher.xact_meta_data:
-            if not self.batcher.xact_meta_data[transaction][2]:
-                is_done = False
-
-        return is_done
-
