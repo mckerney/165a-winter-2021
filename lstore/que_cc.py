@@ -86,14 +86,17 @@ class PlanningWorker:
                 # TODO select transaction by it's age, oldest first
 
                 # TODO NICK Sort transactions based on timestamp
+                self.batcher.xact_batch.sort(key = lambda xact:xact.timestamp)
+
                 for xact in self.batcher.xact_batch:
 
                     xact.id = self.batcher.xact_count
                     self.batcher.xact_meta_data[xact.id] = [len(xact.queries), [], False]
                     self.batcher.xact_count += 1
                     xact_pop = self.batcher.xact_batch.pop(0)
-
+                    
                     # TODO NICK Sort query list based on timestamp
+                    xact_pop.queries.sort(key = lambda query:query.timestamp)
                     for query in xact_pop.queries:
                         print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
                         query.set_xact_id(xact.id)
