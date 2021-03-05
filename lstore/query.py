@@ -59,7 +59,7 @@ class Query:
         Return True upon successful insertion
         Return False if insert fails for whatever reason
         """
-        print(f'columns = {columns}')
+
         unique_identifier = columns[0]
         columns_list = list(columns)
         if len(columns_list) != self.table.num_columns:
