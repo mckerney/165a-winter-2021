@@ -3,7 +3,6 @@ from lstore.query import Query
 from lstore.transaction import *
 from lstore.helpers import *
 import threading
-import sys
 
 def m3_tester():
     path = './MS3'
@@ -25,13 +24,12 @@ def m3_tester():
 
     db.batcher.enqueue_xact(transaction1)
 
-    # transaction2 = Transaction()
-    # query_3 = query.insert(*[6, 7, 8, 9, 10])
-    # transaction2.queries.append(query_3)
-    # db.batcher.enqueue_xact(transaction2)
+    transaction2 = Transaction()
+    query_3 = query.insert(*[6, 7, 8, 9, 10])
+    transaction2.queries.append(query_3)
+    db.batcher.enqueue_xact(transaction2)
 
     db.batcher.batch_xact()
-    # sys.exit()
     db.close()
 
 main_thread = threading.Thread(target=m3_tester)
