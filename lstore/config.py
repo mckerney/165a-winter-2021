@@ -25,8 +25,12 @@ BUFFERPOOL_FRAME_COUNT = 75  # 1 frame == 1 base page
 MERGE_COUNT_TRIGGER = 2048
 
 # QueCC
-BATCH_SIZE = 4
-PRIORITY_QUEUE_COUNT = 1
+BATCH_SIZE = 2
+PRIORITY_QUEUE_COUNT = 2
 
 #QUERIES
 INSERT = 'insert'
+SELECT = 'select'
+UPDATE = 'update'
+DELETE = 'delete'
+SUM = 'sum'

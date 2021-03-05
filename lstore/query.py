@@ -48,11 +48,9 @@ class Query:
         """
         Create an Insert transaction
         """
-        xact = Transaction()
-        print('BEFORE ADD')
-        xact.add_query(INSERT, self.__insert, None, *columns)
-        self.table.db_batcher.queue_xact(xact)
-        self.table.db_batcher.batch_xact()
+        q_op = QueryOp()
+        q_op.add_query(INSERT, self.__insert, None, *columns)
+        return q_op
 
 
     def __insert(self, *columns):
@@ -78,17 +76,25 @@ class Query:
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 
         if did_successfully_write:
-            print('SUCCESSFUL')
+            print('INSERT SUCCESSFUL')
             for i in range(len(columns_list)):
                 column_index = self.table.index.get_index_for_column(i)
-                print(f'column_index = {column_index}')
+                # print(f'column_index = {column_index}')
                 if column_index is not None:
                     column_index.insert(columns_list[i], new_rid)
-                    print(f'post insert col index = {column_index.index}')
+                    # print(f'post insert col index = {column_index.index}')
 
             return True
 
         return False
+
+    def select(self, key, column, query_columns):
+        q_op = QueryOp()
+        # print('BEFORE SELECT')
+        #rid = self.table.record_does_exist(key)
+        #print(f'RID: {rid}')
+        q_op.add_query(SELECT, self.__select, None, key, column, query_columns)
+        return q_op
 
     """
     # Read a record with specified key
@@ -99,7 +105,7 @@ class Query:
     # Returns False if record locked by TPL
     # Assume that select will never be called on a key that doesn't exist
     """
-    def select(self, key, column, query_columns):
+    def __select(self, key, column, query_columns):
         # Check that the incoming user arguments to select are valid
         if column > self.table.num_columns or column < 0:
             # column argument out of range
@@ -130,6 +136,7 @@ class Query:
                     selected_record.user_date[i] = None
             record_return_list.append(selected_record)
 
+        print(f"__SELECT RETURNING {record_return_list[0].user_data}")
         return record_return_list
 
     """

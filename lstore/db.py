@@ -1,6 +1,7 @@
 from lstore.table import Table
 from lstore.bufferpool import *
 from lstore.que_cc import *
+import time
 import os
 import shutil
 import pickle
@@ -22,7 +23,8 @@ class Database:
         """
         self.bufferpool = Bufferpool(path)
         self.batcher = Batcher()
-        # TODO instantiate 2 PlanningWorkers and however many ExecutionWorkers
+
+        # TODO spawn a main thread that doesn't close until db.close is called, so we can join out other threads
 
         # Check if root path already exists and set the root_name
         if os.path.isdir(path):
@@ -76,6 +78,12 @@ class Database:
         table_directory_file = open(f"{self.root_name}/table_directory.pkl", "wb")
         pickle.dump(self.table_directory, table_directory_file)
         table_directory_file.close()
+
+        # Thread cleanup
+        # TODO need to have a way to see if all transactions that have been submitted have completed, sleep is temporary
+        time.sleep(5)
+        print(f'KILLING THREADS')
+        self.batcher.kill_threads()
 
         # go through every table and save the page directories
         for table_info in self.table_directory.values():
