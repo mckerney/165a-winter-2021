@@ -56,7 +56,6 @@ def m3_tester():
     transaction6.queries.append(query_11)
     db.batcher.enqueue_xact(transaction6)
 
-
     db.close()
 
 main_thread = threading.Thread(target=m3_tester)

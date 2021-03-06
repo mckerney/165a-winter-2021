@@ -3,24 +3,6 @@ from lstore.db import *
 
 from datetime import datetime
 
-class Transaction:
-    """
-    Holds a Query and its arguments as well as relevant data for QueCC planning
-    """
-    def __init__(self):
-        self.id = None
-        self.queries = []
-        self.queries_returned = 0
-        self.results = None
-        self.timestamp = datetime.now()
-
-    def set_return_values(self, ret_list: list):
-        self.results = ret_list
-
-    def get_return_values(self):
-        return self.results
-
-
 
 class QueryOp:
 
@@ -97,3 +79,25 @@ class QueryOp:
 
         if self.query_name == 'increment':
             return
+
+
+class Transaction:
+    """
+    Holds a Query and its arguments as well as relevant data for QueCC planning
+    """
+
+    def __init__(self):
+        self.id = None
+        self.queries = []
+        self.queries_returned = 0
+        self.results = None
+        self.timestamp = datetime.now()
+
+    def add_query(self, query_operation: QueryOp):
+        self.queries.append(query_operation)
+
+    def set_return_values(self, ret_list: list):
+        self.results = ret_list
+
+    def get_return_values(self):
+        return self.results
