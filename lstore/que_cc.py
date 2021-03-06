@@ -44,7 +44,7 @@ class Batcher:
         """
         fills a batch with transactions from the xact_queue
         """
-        print('BATCHING transactions')
+        # print('BATCHING transactions')
         for i in range(BATCH_SIZE + 1):
 
             if len(self.xact_batch) < BATCH_SIZE and len(self.xact_queue) > 0:
@@ -96,17 +96,17 @@ class PlanningWorker:
         self.planner_thread.start()
 
     def do_work(self, stop):
-        print('PLANNER STARTING')
+        # print('PLANNER STARTING')
 
         while True:
 
             if stop():
                 break
 
-            time.sleep(.5)
+            time.sleep(.001)
 
             if self.batcher.batch_ready:
-                print(f'PLANNING - current batch: {self.batcher.xact_batch}')
+                # print(f'PLANNING - current batch: {self.batcher.xact_batch}')
                 # moved sort to batch ready check
                 for xact in self.batcher.xact_batch:
 
@@ -116,7 +116,7 @@ class PlanningWorker:
                     self.batcher.xact_count += 1
 
                     for query in xact.queries:
-                        print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
+                        # print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
                         query.set_xact_id(xact.id)
                         index = query.key % PRIORITY_QUEUE_COUNT
                         self.group.queues[index].append(query)
@@ -139,20 +139,20 @@ class ExecutionWorker:
         self.exec_thread.start()
 
     def do_execution(self, stop):
-        print(f'EXECUTOR {self.assigned_index} STARTING')
+        # print(f'EXECUTOR {self.assigned_index} STARTING')
 
         while True:
 
             if stop():
                 break
 
-            time.sleep(.5)
+            time.sleep(.001)
 
             if len(self.batcher.high_priority_group.queues[self.assigned_index]) > 0:
-                print(f'EXECUTING {self.assigned_index}')
+                # print(f'EXECUTING {self.assigned_index}')
 
                 q_op = self.batcher.high_priority_group.queues[self.assigned_index].popleft()
-                print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
+                # print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
                 ret = q_op.run()
                 self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)
 
@@ -169,14 +169,14 @@ class InternWorker:
         self.intern_thread.start()
 
     def batcher_maintenance(self, stop):
-        print("STARTING INTERN")
+        # print("STARTING INTERN")
 
         while True:
 
             if stop():
                 break
 
-            time.sleep(1)
+            time.sleep(.01)
 
             if not self.batcher.batch_ready:
                 self.batcher.batch_xact()
