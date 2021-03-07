@@ -69,7 +69,7 @@ for i in range(num_threads):
 db.let_execution_threads_complete()
 
 # Test Update
-for j in range(0, num_threads):
+for j in range(num_threads):
     for key in keys:
         updated_columns = [None, None, None, None, None]
         for i in range(1, grades_table.num_columns):
@@ -83,7 +83,7 @@ for j in range(0, num_threads):
 for i in range(num_threads):
     db.batcher.enqueue_xact(update_transactions[i])
 
-# Let all operations complete before the final select
+#Let all operations complete before the final select
 db.let_execution_threads_complete()
 
 score = len(keys)

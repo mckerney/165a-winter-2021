@@ -99,23 +99,23 @@ class IndividualIndex:
         return self.index.get(value)
 
     def insert(self, value, new_rid):
-        self.lock.acquire()
+        #self.lock.acquire()
         self.index[value] = (self.index.get(value) or []) + [new_rid]
-        self.lock.release()
+        #self.lock.release()
     
     def update(self,new_value,old_value, base_rid):
         # remove base rid from the old value's entry
-        self.lock.acquire()
+        #self.lock.acquire()
         if base_rid in self.index[old_value]:
             self.index[old_value].remove(base_rid)
         # add base rid to new value's entry
         self.index[new_value] = (self.index.get(new_value) or []) + [base_rid]
-        self.lock.release()
+        #self.lock.release()
 
     def delete(self, value, deleted_rid):
-        self.lock.acquire()
+        #self.lock.acquire()
         self.index[value].remove(deleted_rid)
-        self.lock.release()
+        #self.lock.release()
 
 
 class Index:

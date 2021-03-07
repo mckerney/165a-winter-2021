@@ -171,7 +171,6 @@ class Database:
 
     def let_execution_threads_complete(self):
         # Thread cleanup
-        print(self.batcher.xacts_queued)
-        print(self.batcher.xacts_completed)
         while self.batcher.xacts_queued != self.batcher.xacts_completed:
-            time.sleep(.25)
+            # print("here")
+            time.sleep(.5)
