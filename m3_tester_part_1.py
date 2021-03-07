@@ -43,8 +43,9 @@ for i in range(1000):
 for i in range(1000):
     for j in range(5):
         key = 916841696 + i
-        records[key] = [None, randint(0,100), randint(0,100), randint(0,100), randint(0,100)]
-        query = q.update(key, *records[key] )
+        update_cols = [None, randint(0,100), randint(0,100), randint(0,100), randint(0,100)]
+        records[key] = update_cols
+        query = q.update(key, *update_cols)
         query_transactions[i].add_query(query)
 
 # Submit the 1000 Transactions to be committed
@@ -63,9 +64,15 @@ for i in range(1000):
 db.let_execution_threads_complete()
 
 # Check updates are what we expected, NOT USING OUR WORKER THREADS
-# TODO needs to be setup to do string compare
 for i in range(1000):
+    key = 916841696 + i
+    should_be = records[key]
+    should_be[0] = key
     q_op = q.select(916841696 + i, 0, [1, 1, 1, 1, 1])
-    print(f'SELECTING {q_op.run()} should be {records[916841696 + i]}')
+    result = q_op.run()
+    if should_be != result[0]:
+        print(f'select error on {key}: result returned {result} should be {should_be}')
+    else:
+        print(f'SUCCESS: select on {key} returned {result}')
 
 db.close()

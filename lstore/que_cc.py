@@ -24,19 +24,25 @@ class Batcher:
         self.xact_meta_data = {
             # xact_id : [len of queries list, [], False]
         }
-        self.high_priority_group = Group()
-        self.low_priority_group = Group()
+        self.high_priority_group = Group(priority='high')
+        self.low_priority_group = Group(priority='low')
         self.high_planner = PlanningWorker(self.high_priority_group, self)
-        # self.low_planner = PlanningWorker(self.low_priority_group, self)
-        self.high_executors = self.initialize_execution_threads()
+        self.low_planner = PlanningWorker(self.low_priority_group, self)
+        self.high_executors = self.initialize_execution_threads(priority='high')
+        self.low_executors = self.initialize_execution_threads(priority='low')
         self.intern = InternWorker(self)
         self.execution_mutex = threading.Lock()
 
-    def initialize_execution_threads(self):
+    def initialize_execution_threads(self, priority):
         executor_list = []
-        for i in range(PRIORITY_QUEUE_COUNT):
-            temp_executor = ExecutionWorker(self, i)
+        for i in range(QUEUES_PER_GROUP):
+            if priority == 'high':
+                temp_executor = ExecutionWorker(self, i)
+            else:
+                temp_executor = ExecutionWorker(self, i + QUEUES_PER_GROUP)
+
             executor_list.append(temp_executor)
+
 
         return executor_list
 
@@ -79,8 +85,9 @@ class Group:
     """
     Holds queues of Transactions
     """
-    def __init__(self):
-        self.queues = [deque() for i in range(PRIORITY_QUEUE_COUNT)]
+    def __init__(self, priority):
+        self.priority = priority
+        self.queues = [deque() for i in range(QUEUES_PER_GROUP)]
 
 
 class PlanningWorker:
@@ -119,7 +126,10 @@ class PlanningWorker:
                         # print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
                         query.set_xact_id(xact.id)
                         index = query.key % PRIORITY_QUEUE_COUNT
-                        self.group.queues[index].append(query)
+                        if index < QUEUES_PER_GROUP:
+                            self.batcher.high_priority_group.queues[index].append(query)
+                        else:
+                            self.batcher.low_priority_group.queues[index - QUEUES_PER_GROUP].append(query)
 
                 self.batcher.xact_batch =[]
 
@@ -148,13 +158,23 @@ class ExecutionWorker:
 
             time.sleep(.001)
 
-            if len(self.batcher.high_priority_group.queues[self.assigned_index]) > 0:
-                # print(f'EXECUTING {self.assigned_index}')
+            if self.assigned_index < QUEUES_PER_GROUP:
+                if len(self.batcher.high_priority_group.queues[self.assigned_index]) > 0:
+                    # print(f'EXECUTING {self.assigned_index}')
 
-                q_op = self.batcher.high_priority_group.queues[self.assigned_index].popleft()
-                # print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
-                ret = q_op.run()
-                self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)
+                    q_op = self.batcher.high_priority_group.queues[self.assigned_index].popleft()
+                    # print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
+                    ret = q_op.run()
+                    self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)
+
+            else:
+                if len(self.batcher.low_priority_group.queues[self.assigned_index - QUEUES_PER_GROUP]) > 0:
+                    # print(f'EXECUTING {self.assigned_index}')
+
+                    q_op = self.batcher.low_priority_group.queues[self.assigned_index - QUEUES_PER_GROUP].popleft()
+                    # print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
+                    ret = q_op.run()
+                    self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)
 
 
 class InternWorker:
