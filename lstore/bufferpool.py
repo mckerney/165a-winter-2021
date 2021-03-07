@@ -70,8 +70,6 @@ class Bufferpool:
         Function that evicts a page from the Bufferpool
         """
 
-        # TODO check for most eligible un-pined page
-
         last_used_page = self.frames[0]
         index = 0
         frame_index = 0
@@ -81,6 +79,8 @@ class Bufferpool:
         Find pages with least number of accesses
         """
         for frame in self.frames:
+            # if frame.pin:
+            #     continue
             if frame.access_count < min_accesses:
                 # clear deletion array, and add current frame
                 min_accesses = frame.access_count
@@ -112,7 +112,6 @@ class Bufferpool:
         """
         Function that loads a page into the Bufferpool
         """
-
         # Check whether this is a base record or a tail record
         if is_base_record:
             path_to_page = f"{self.path_to_root}/{table_name}/page_range_{page_range_index}/" \
@@ -149,6 +148,8 @@ class Bufferpool:
         # Add the frame to the frame directory
         self._add_frame_to_directory(table_name, page_range_index, base_page_index, is_base_record, frame_index)
 
+        # Un Pin the frame
+        self.frames[frame_index].unpin_frame()
         return frame_index
 
     def reload_page(self, frame_index: int, num_columns: int):

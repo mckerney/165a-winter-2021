@@ -562,11 +562,11 @@ class Table:
         # Start working with BasePage Frame
         frame_info = (self.name, pr, bp, is_base_record)
         if not self.bufferpool.is_record_in_pool(self.name, record_info=record_info):
-            self.bufferpool.load_page(self.name, self.num_columns, page_range_index=pr, base_page_index=bp,
+            frame_index = self.bufferpool.load_page(self.name, self.num_columns, page_range_index=pr, base_page_index=bp,
                                       is_base_record=is_base_record)
+        else:
+            frame_index = self.bufferpool.frame_directory.get(frame_info)
 
-        # Get Frame index
-        frame_index = self.bufferpool.frame_directory.get(frame_info)
         indirection_rid = self.bufferpool.frames[frame_index].all_columns[INDIRECTION].read(pp_index)
 
         for col in range(self.num_columns + META_COLUMN_COUNT):

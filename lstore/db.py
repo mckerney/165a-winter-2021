@@ -100,7 +100,8 @@ class Database:
             index_file = open(f"{table.table_path}/indices.pkl", "wb")
 
             for index in table.index.indices:
-                index.lock = None
+                if index is not None:
+                    index.lock = None
 
             pickle.dump(table.index, index_file)
             index_file.close()

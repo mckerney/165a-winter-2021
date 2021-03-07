@@ -29,20 +29,14 @@ class Batcher:
         self.low_priority_group = Group(priority='low')
         self.high_planner = PlanningWorker(self.high_priority_group, self)
         self.low_planner = PlanningWorker(self.low_priority_group, self)
-        self.high_executors = self.initialize_execution_threads(priority='high')
-        self.low_executors = self.initialize_execution_threads(priority='low')
+        self.executors = self.initialize_execution_threads()
         self.intern = InternWorker(self)
         self.execution_mutex = threading.Lock()
 
-    def initialize_execution_threads(self, priority):
+    def initialize_execution_threads(self):
         executor_list = []
         for i in range(QUEUES_PER_GROUP):
-            # Check which priority
-            if priority == 'high':
-                temp_executor = ExecutionWorker(self, i)
-            else:
-                temp_executor = ExecutionWorker(self, i + QUEUES_PER_GROUP)
-
+            temp_executor = ExecutionWorker(self, i)
             executor_list.append(temp_executor)
 
         return executor_list
@@ -117,6 +111,9 @@ class PlanningWorker:
             if self.batcher.batch_ready:
                 # print(f'PLANNING - current batch: {self.batcher.xact_batch}')
                 # moved sort to batch ready check
+                counter = 0
+                xact_count = len(self.batcher.xact_batch)
+
                 for xact in self.batcher.xact_batch:
 
                     xact.id = self.batcher.xact_count
@@ -127,13 +124,14 @@ class PlanningWorker:
                     for query in xact.queries:
                         # print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
                         query.set_xact_id(xact.id)
-                        index = query.key % PRIORITY_QUEUE_COUNT
-                        # high priority takes key with a remainder of 0 - 4
-                        if index < QUEUES_PER_GROUP:
+                        index = query.key % QUEUES_PER_GROUP
+                        # high priority
+                        if counter < (xact_count / 2) or query.query_name == INSERT:
                             self.batcher.high_priority_group.queues[index].append(query)
-                        else:  # low priority takes keys with a remainder of 5 - 9
-                            # index - QUEUES_PER_GROUP is the offset in the low priority group
-                            self.batcher.low_priority_group.queues[index - QUEUES_PER_GROUP].append(query)
+                        else:  # low priority
+                            self.batcher.low_priority_group.queues[index].append(query)
+
+                    counter += 1
 
                 self.batcher.xact_batch = []
 
@@ -164,9 +162,8 @@ class ExecutionWorker:
             time.sleep(.001)
 
             # Determine which priority group and respective queue this execution thread maps to
-            if self.assigned_index < QUEUES_PER_GROUP:  # High priority
-                if len(self.batcher.high_priority_group.queues[self.assigned_index]) > 0:
-                    # print(f'EXECUTING {self.assigned_index}')
+            if len(self.batcher.high_priority_group.queues[self.assigned_index]) > 0:
+                    # print(f'EXECUTING HIGH {self.assigned_index}')
 
                     q_op = self.batcher.high_priority_group.queues[self.assigned_index].popleft()
                     # print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
@@ -174,8 +171,8 @@ class ExecutionWorker:
                     self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)
 
             else:  # low priority
-                if len(self.batcher.low_priority_group.queues[self.assigned_index - QUEUES_PER_GROUP]) > 0:
-                    # print(f'EXECUTING {self.assigned_index}')
+                if len(self.batcher.low_priority_group.queues[self.assigned_index]) > 0:
+                    # print(f'EXECUTING LOW {self.assigned_index}')
 
                     q_op = self.batcher.low_priority_group.queues[self.assigned_index - QUEUES_PER_GROUP].popleft()
                     # print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
