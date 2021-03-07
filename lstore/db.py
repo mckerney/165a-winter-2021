@@ -99,6 +99,9 @@ class Database:
             # save indexes as pkl
             index_file = open(f"{table.table_path}/indices.pkl", "wb")
 
+            for index in table.index.indices:
+                index.lock = None
+
             pickle.dump(table.index, index_file)
             index_file.close()
         

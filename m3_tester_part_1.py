@@ -32,13 +32,11 @@ for i in range(1000):
 
 
 # Create multiple transactions with multiple updates
-query_transactions = []
+update_transactions = []
 select_transactions = []
 for i in range(1000):
-    transaction = Transaction()
-    query_transactions.append(transaction)
-    transaction2 = Transaction()
-    select_transactions.append(transaction2)
+    update_transactions.append(Transaction())
+    select_transactions.append(Transaction())
 
 for i in range(1000):
     for j in range(5):
@@ -46,11 +44,11 @@ for i in range(1000):
         update_cols = [None, randint(0,100), randint(0,100), randint(0,100), randint(0,100)]
         records[key] = update_cols
         query = q.update(key, *update_cols)
-        query_transactions[i].add_query(query)
+        update_transactions[i].add_query(query)
 
 # Submit the 1000 Transactions to be committed
 for i in range(1000):
-    db.batcher.enqueue_xact(query_transactions[i])
+    db.batcher.enqueue_xact(update_transactions[i])
 
 for i in range(1000):
     for j in range(5):
