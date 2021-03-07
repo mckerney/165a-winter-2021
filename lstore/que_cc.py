@@ -5,6 +5,7 @@ from lstore.config import *
 import time
 import threading
 
+
 class Batcher:
     """
     Holds Transactions ready for consumption by PlanningWorkers
@@ -36,13 +37,13 @@ class Batcher:
     def initialize_execution_threads(self, priority):
         executor_list = []
         for i in range(QUEUES_PER_GROUP):
+            # Check which priority
             if priority == 'high':
                 temp_executor = ExecutionWorker(self, i)
             else:
                 temp_executor = ExecutionWorker(self, i + QUEUES_PER_GROUP)
 
             executor_list.append(temp_executor)
-
 
         return executor_list
 
@@ -71,20 +72,21 @@ class Batcher:
         self.kill_thread = True
 
     def check_for_completed_xacts(self):
-         for xact in self.transaction:
-             if self.xact_meta_data[xact.id][0] == len(self.xact_meta_data[xact.id][1]):
-                 self.xact_meta_data[xact.id][2] = True
-                 ret_list = self.xact_meta_data[xact.id][1]
-                 xact.set_return_values(ret_list)
-                 print(f'TRANSACTION {xact.id + 1} return = {xact.get_return_values()}')
-                 self.transaction.remove(xact)
-                 self.xacts_completed += 1
+        for xact in self.transaction:
+            if self.xact_meta_data[xact.id][0] == len(self.xact_meta_data[xact.id][1]):
+                self.xact_meta_data[xact.id][2] = True
+                ret_list = self.xact_meta_data[xact.id][1]
+                xact.set_return_values(ret_list)
+                print(f'TRANSACTION {xact.id + 1} return = {xact.get_return_values()}')
+                self.transaction.remove(xact)
+                self.xacts_completed += 1
 
 
 class Group:
     """
     Holds queues of Transactions
     """
+
     def __init__(self, priority):
         self.priority = priority
         self.queues = [deque() for i in range(QUEUES_PER_GROUP)]
@@ -98,7 +100,7 @@ class PlanningWorker:
     def __init__(self, priority_group: Group, batcher: Batcher):
         self.group = priority_group
         self.batcher = batcher
-        self.planner_thread = threading.Thread(target=self.do_work, args=(lambda : self.batcher.kill_thread,))
+        self.planner_thread = threading.Thread(target=self.do_work, args=(lambda: self.batcher.kill_thread,))
         self.planner_thread.daemon = False
         self.planner_thread.start()
 
@@ -126,12 +128,14 @@ class PlanningWorker:
                         # print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
                         query.set_xact_id(xact.id)
                         index = query.key % PRIORITY_QUEUE_COUNT
+                        # high priority takes key with a remainder of 0 - 4
                         if index < QUEUES_PER_GROUP:
                             self.batcher.high_priority_group.queues[index].append(query)
-                        else:
+                        else:  # low priority takes keys with a remainder of 5 - 9
+                            # index - QUEUES_PER_GROUP is the offset in the low priority group
                             self.batcher.low_priority_group.queues[index - QUEUES_PER_GROUP].append(query)
 
-                self.batcher.xact_batch =[]
+                self.batcher.xact_batch = []
 
             if len(self.batcher.xact_batch) == 0:
                 self.batcher.batch_ready = False
@@ -141,10 +145,11 @@ class ExecutionWorker:
     """
     ExecutionWorkers are responsible for executing transactions in the PriorityGroups
     """
+
     def __init__(self, batcher: Batcher, queue_index: int):
         self.batcher = batcher
         self.assigned_index = queue_index
-        self.exec_thread = threading.Thread(target=self.do_execution, args=(lambda : self.batcher.kill_thread,))
+        self.exec_thread = threading.Thread(target=self.do_execution, args=(lambda: self.batcher.kill_thread,))
         self.exec_thread.daemon = False
         self.exec_thread.start()
 
@@ -158,7 +163,8 @@ class ExecutionWorker:
 
             time.sleep(.001)
 
-            if self.assigned_index < QUEUES_PER_GROUP:
+            # Determine which priority group and respective queue this execution thread maps to
+            if self.assigned_index < QUEUES_PER_GROUP:  # High priority
                 if len(self.batcher.high_priority_group.queues[self.assigned_index]) > 0:
                     # print(f'EXECUTING {self.assigned_index}')
 
@@ -167,7 +173,7 @@ class ExecutionWorker:
                     ret = q_op.run()
                     self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)
 
-            else:
+            else:  # low priority
                 if len(self.batcher.low_priority_group.queues[self.assigned_index - QUEUES_PER_GROUP]) > 0:
                     # print(f'EXECUTING {self.assigned_index}')
 
@@ -179,12 +185,13 @@ class ExecutionWorker:
 
 class InternWorker:
     """
-    Handles our shit
+    Handles batching and checking transaction completion
     """
+
     def __init__(self, batcher: Batcher):
         self.batcher = batcher
         self.intern_thread = threading.Thread(target=self.batcher_maintenance,
-                                              args=(lambda : self.batcher.kill_thread,))
+                                              args=(lambda: self.batcher.kill_thread,))
         self.intern_thread.daemon = False
         self.intern_thread.start()
 
