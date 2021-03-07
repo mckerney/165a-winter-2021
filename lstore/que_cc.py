@@ -66,6 +66,7 @@ class Batcher:
         self.kill_thread = True
 
     def check_for_completed_xacts(self):
+        self.execution_mutex.acquire()
         for xact in self.transaction:
             if self.xact_meta_data[xact.id][0] == len(self.xact_meta_data[xact.id][1]):
                 self.xact_meta_data[xact.id][2] = True
@@ -74,6 +75,7 @@ class Batcher:
                 print(f'TRANSACTION {xact.id + 1} return = {xact.get_return_values()}')
                 self.transaction.remove(xact)
                 self.xacts_completed += 1
+        self.execution_mutex.release()
 
 
 class Group:
@@ -111,8 +113,6 @@ class PlanningWorker:
             if self.batcher.batch_ready:
                 # print(f'PLANNING - current batch: {self.batcher.xact_batch}')
                 # moved sort to batch ready check
-                counter = 0
-                xact_count = len(self.batcher.xact_batch)
 
                 for xact in self.batcher.xact_batch:
 
@@ -125,13 +125,7 @@ class PlanningWorker:
                         # print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
                         query.set_xact_id(xact.id)
                         index = query.key % QUEUES_PER_GROUP
-                        # high priority
-                        if counter < (xact_count / 2) or query.query_name == INSERT:
-                            self.batcher.high_priority_group.queues[index].append(query)
-                        else:  # low priority
-                            self.batcher.low_priority_group.queues[index].append(query)
-
-                    counter += 1
+                        self.group.queues[index].append(query)
 
                 self.batcher.xact_batch = []
 
@@ -161,7 +155,6 @@ class ExecutionWorker:
 
             time.sleep(.001)
 
-            # Determine which priority group and respective queue this execution thread maps to
             if len(self.batcher.high_priority_group.queues[self.assigned_index]) > 0:
                     # print(f'EXECUTING HIGH {self.assigned_index}')
 
@@ -174,7 +167,7 @@ class ExecutionWorker:
                 if len(self.batcher.low_priority_group.queues[self.assigned_index]) > 0:
                     # print(f'EXECUTING LOW {self.assigned_index}')
 
-                    q_op = self.batcher.low_priority_group.queues[self.assigned_index - QUEUES_PER_GROUP].popleft()
+                    q_op = self.batcher.low_priority_group.queues[self.assigned_index].popleft()
                     # print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
                     ret = q_op.run()
                     self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)

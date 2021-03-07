@@ -17,7 +17,8 @@ class Query:
     """
 
     def __init__(self, table):
-        self.table = table     
+        self.table = table
+        self.lock = threading.Lock()
 
     def delete(self, key):
         """
@@ -123,6 +124,9 @@ class Query:
 
         # Make sure that the record selected by the user exists in our database
         valid_rids = self.table.records_with_rid(column, key)
+        record_rid = valid_rids[0]
+        self.table.page_directory.get(record_rid)
+
         if len(valid_rids) == 0:
             # print('no valid rids', key, column)
             return False
@@ -150,6 +154,7 @@ class Query:
         return q_op
 
     def __update(self, key, columns):
+        self.lock.acquire()
         columns_list = columns
 
         if len(columns_list) != self.table.num_columns:
@@ -201,6 +206,7 @@ class Query:
                     base_rid = current_record.get_rid()
                     column_index.update(columns_list[i], old_value, base_rid)
 
+        self.lock.release()
         return self.table.update_record(updated_record=new_tail_record, rid=valid_rid)
 
     def sum(self, start_range, end_range, aggregate_column_index):

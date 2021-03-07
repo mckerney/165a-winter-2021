@@ -379,11 +379,9 @@ class Table:
         then creates a TID dict that is mapped in the BP tail_page_directory.
         """
 
-
         rid = self.num_records
         self.num_records += 1
         self.page_directory[rid] = self.__new_tail_rid_dict(page_range_index=page_range_index)
-
 
         return rid
 
@@ -493,6 +491,7 @@ class Table:
 
         new_update_rid = self.new_tail_rid(page_range_index=pr)
         new_rid_dict = self.page_directory.get(new_update_rid)
+        # print(f"New update rid {new_rid_dict}")
 
         new_pr = new_rid_dict.get('page_range')
         new_tp = new_rid_dict.get('tail_page')
@@ -551,6 +550,7 @@ class Table:
 
         self.record_lock.acquire()
         record_info = self.page_directory.get(rid)
+
         # Check if updated value is false
         pr = record_info.get("page_range")
         bp = record_info.get("base_page")
@@ -561,6 +561,7 @@ class Table:
 
         # Start working with BasePage Frame
         frame_info = (self.name, pr, bp, is_base_record)
+
         if not self.bufferpool.is_record_in_pool(self.name, record_info=record_info):
             frame_index = self.bufferpool.load_page(self.name, self.num_columns, page_range_index=pr, base_page_index=bp,
                                       is_base_record=is_base_record)

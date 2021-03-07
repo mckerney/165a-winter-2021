@@ -30,6 +30,7 @@ for i in range(1000):
 for i in range(1000):
     db.batcher.enqueue_xact(insert_transactions[i])
 
+db.let_execution_threads_complete()
 
 # Create multiple transactions with multiple updates
 update_transactions = []
@@ -49,6 +50,8 @@ for i in range(1000):
 # Submit the 1000 Transactions to be committed
 for i in range(1000):
     db.batcher.enqueue_xact(update_transactions[i])
+
+db.let_execution_threads_complete()
 
 for i in range(1000):
     for j in range(5):

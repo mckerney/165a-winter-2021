@@ -66,6 +66,8 @@ for c in range(grades_table.num_columns):
 for i in range(num_threads):
     db.batcher.enqueue_xact(select_transactions[i])
 
+db.let_execution_threads_complete()
+
 # Test Update
 for j in range(0, num_threads):
     for key in keys:
