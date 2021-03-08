@@ -82,7 +82,6 @@ class Database:
         # Thread cleanup
         self.let_execution_threads_complete()
         self.batcher.kill_threads()
-        print(f'THREADS KILLED')
 
         # go through every table and save the page directories
         for table_info in self.table_directory.values():
@@ -99,13 +98,17 @@ class Database:
             # save indexes as pkl
             index_file = open(f"{table.table_path}/indices.pkl", "wb")
 
+            for index in table.index.indices:
+                if index is not None:
+                    index.lock = None
+
             pickle.dump(table.index, index_file)
             index_file.close()
         
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
 
-        print(f'DB CLOSING')
+        print(f'\nDB CLOSING')
         return True
 
     def create_table(self, name: str, num_columns: int, key: int) -> Table:
@@ -168,4 +171,4 @@ class Database:
     def let_execution_threads_complete(self):
         # Thread cleanup
         while self.batcher.xacts_queued != self.batcher.xacts_completed:
-            time.sleep(.5)
+            time.sleep(.01)
