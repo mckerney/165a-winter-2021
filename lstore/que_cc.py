@@ -31,7 +31,7 @@ class Batcher:
         self.low_planner = PlanningWorker(self.low_priority_group, self)
         self.executors = self.initialize_execution_threads()
         self.intern = InternWorker(self)
-        self.execution_mutex = threading.Lock()
+        self.planner_lock = threading.Lock()
 
     def initialize_execution_threads(self):
         executor_list = []
@@ -59,6 +59,7 @@ class Batcher:
                 self.batch_ready = True
 
     def enqueue_xact(self, transaction: Transaction):
+        transaction.id = self.xacts_queued
         self.xact_queue.append(transaction)
         self.xacts_queued += 1
 
@@ -71,10 +72,17 @@ class Batcher:
                 self.xact_meta_data[xact.id][2] = True
                 ret_list = self.xact_meta_data[xact.id][1]
                 xact.set_return_values(ret_list)
-                print(f'TRANSACTION {xact.id + 1} return = {xact.get_return_values()}')
+                # print(f'TRANSACTION {xact.id + 1} return = {xact.get_return_values()}')
                 self.transaction.remove(xact)
                 self.xacts_completed += 1
 
+    def check_batch_completion(self):
+        completed = True
+        for xact in self.xact_batch:
+            if not xact.planned:
+                completed = False
+
+        return completed
 
 class Group:
     """
@@ -114,22 +122,22 @@ class PlanningWorker:
 
                 for xact in self.batcher.xact_batch:
 
-                    xact.id = self.batcher.xact_count
-                    self.batcher.transaction.append(xact)
-                    self.batcher.xact_meta_data[xact.id] = [len(xact.queries), [], False]
-                    self.batcher.xact_count += 1
+                    self.batcher.planner_lock.acquire()
+                    if not xact.planned:
 
-                    for query in xact.queries:
-                        # print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
-                        query.set_xact_id(xact.id)
-                        index = query.key % QUEUES_PER_GROUP
-                        self.group.queues[index].append(query)
+                        self.batcher.transaction.append(xact)
+                        self.batcher.xact_meta_data[xact.id] = [len(xact.queries), [], False]
 
-                self.batcher.xact_batch = []
+                        for query in xact.queries:
+                            # print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
+                            query.set_xact_id(xact.id)
+                            index = query.key % QUEUES_PER_GROUP
+                            self.group.queues[index].append(query)
 
-            if len(self.batcher.xact_batch) == 0:
-                self.batcher.batch_ready = False
+                        # completed processing transaction
+                        xact.planned = True
 
+                    self.batcher.planner_lock.release()
 
 class ExecutionWorker:
     """
@@ -193,7 +201,13 @@ class InternWorker:
 
             time.sleep(.01)
 
-            if not self.batcher.batch_ready:
+            # if not self.batcher.batch_ready:
+            #     self.batcher.batch_xact()
+
+            if self.batcher.check_batch_completion():
+                self.batcher.xact_batch = []
+                self.batcher.batch_ready = False
                 self.batcher.batch_xact()
 
             self.batcher.check_for_completed_xacts()
+

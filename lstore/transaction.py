@@ -91,6 +91,7 @@ class Transaction:
         self.queries = []
         self.queries_returned = 0
         self.results = None
+        self.planned = False
         self.timestamp = datetime.now()
 
     def add_query(self, query_operation: QueryOp):
