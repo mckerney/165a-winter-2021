@@ -66,7 +66,6 @@ class Batcher:
         self.kill_thread = True
 
     def check_for_completed_xacts(self):
-        self.execution_mutex.acquire()
         for xact in self.transaction:
             if self.xact_meta_data[xact.id][0] == len(self.xact_meta_data[xact.id][1]):
                 self.xact_meta_data[xact.id][2] = True
@@ -75,7 +74,6 @@ class Batcher:
                 print(f'TRANSACTION {xact.id + 1} return = {xact.get_return_values()}')
                 self.transaction.remove(xact)
                 self.xacts_completed += 1
-        self.execution_mutex.release()
 
 
 class Group:
