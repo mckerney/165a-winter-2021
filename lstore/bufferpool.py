@@ -1,5 +1,7 @@
 from lstore.config import * 
 from lstore.page import *
+
+import threading
 from datetime import datetime
 
 class Bufferpool:
@@ -10,14 +12,21 @@ class Bufferpool:
         self.frame_count = 0
         self.path_to_root = path_to_root
         self.merge_buffer = False
+<<<<<<< HEAD
+=======
+        self.data_lock = threading.Lock()
+
+>>>>>>> main
 
     def _add_frame_to_directory(self, table_name, page_range, base_page, is_base_record, frame_index):
+
         new_frame_key = (table_name, page_range, base_page, is_base_record)
         self.frame_directory[new_frame_key] = frame_index
         self.frames[frame_index].tuple_key = new_frame_key
         
         if self.frame_count < BUFFERPOOL_FRAME_COUNT or self.merge_buffer:
             self.frame_count += 1
+
 
     def at_capacity(self):
         if self.frame_count == BUFFERPOOL_FRAME_COUNT:
@@ -64,6 +73,7 @@ class Bufferpool:
         """
         Function that evicts a page from the Bufferpool
         """
+        self.data_lock.acquire()
         last_used_page = self.frames[0]
         index = 0
         frame_index = 0
@@ -73,6 +83,8 @@ class Bufferpool:
         Find pages with least number of accesses
         """
         for frame in self.frames:
+            if frame.pin:
+                continue
             if frame.access_count < min_accesses:
                 # clear deletion array, and add current frame
                 min_accesses = frame.access_count
@@ -96,7 +108,7 @@ class Bufferpool:
         
         frame_key = last_used_page.tuple_key
         del self.frame_directory[frame_key]
-        
+        self.data_lock.release()
         return frame_index
 
     def load_page(self, table_name: str, num_columns: int, page_range_index: int, base_page_index: int,
@@ -105,6 +117,7 @@ class Bufferpool:
         Function that loads a page into the Bufferpool
         """
         # Check whether this is a base record or a tail record
+        self.data_lock.acquire()
         if is_base_record:
             path_to_page = f"{self.path_to_root}/{table_name}/page_range_{page_range_index}/" \
                            f"base_page_{base_page_index}.bin"
@@ -116,10 +129,16 @@ class Bufferpool:
 
         # need to evict a page because the bufferpool is at capacity
         if self.at_capacity() and not self.merge_buffer:
+<<<<<<< HEAD
+=======
+            # print(f'********  FRAME COUNT = {self.frame_count}')
+
+>>>>>>> main
             frame_index = self.evict_page()
             self.frames[frame_index] = Frame(path_to_page_on_disk=path_to_page, table_name=table_name)
         else:
             frame_index = self.frame_count
+
             self.frames.append(Frame(path_to_page_on_disk=path_to_page, table_name=table_name))
 
         # Pin the frame
@@ -139,6 +158,9 @@ class Bufferpool:
         # Add the frame to the frame directory
         self._add_frame_to_directory(table_name, page_range_index, base_page_index, is_base_record, frame_index)
 
+        # Un Pin the frame
+        self.frames[frame_index].unpin_frame()
+        self.data_lock.release()
         return frame_index
 
     def reload_page(self, frame_index: int, num_columns: int):
@@ -147,6 +169,10 @@ class Bufferpool:
         for i in range(num_columns + META_COLUMN_COUNT):
             frame_to_reload.all_columns[i].read_from_disk(path_to_page=path_to_page, column=i)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
     def commit_page(self, frame_index):
         frame_to_commit = self.frames[frame_index]
         all_columns = frame_to_commit.all_columns

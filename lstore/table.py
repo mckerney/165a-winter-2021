@@ -4,7 +4,7 @@ from lstore.config import *
 from lstore.record import *
 from lstore.helpers import *
 from lstore.bufferpool import *
-from time import time
+from lstore.que_cc import *
 import math
 import os
 import pickle
@@ -77,6 +77,7 @@ import threading
 '''
 
 
+<<<<<<< HEAD
 class BasePage:
     """
     :param num_columns: int         Number of data columns in the BasePage
@@ -102,6 +103,8 @@ class TailPage:
         self.columns_list = [Page(column_num=i) for i in range(num_columns + META_COLUMN_COUNT)]
         
     
+=======
+>>>>>>> main
 class PageRange:
     """
     :param num_columns: int        Number of data columns in the PageRange
@@ -125,8 +128,9 @@ class Table:
     :param bufferpool: Bufferpool   Active Bufferpool for the Database
     """
     def __init__(self, name: str, num_columns: int, key: int, path: str = None, bufferpool: Bufferpool = None,
-                 is_new=True):
+                 batcher: Batcher = None, is_new=True):
         self.name = name
+        self.db_batcher = batcher
         self.bufferpool = bufferpool
         self.table_path = path
         self.key = key
@@ -362,11 +366,12 @@ class Table:
         Function that creates a new RID, increments the amount of records in the table,
         then creates a RID dict that is mapped in the Table page_directory.
         """
+        self.record_lock.acquire()
         rid = self.num_records
         self.num_records += 1
         self.page_directory[rid] = self.__new_base_rid_dict()
         self.num_base_records += 1
-
+        self.record_lock.release()
         return rid
 
     def __new_base_rid_dict(self) -> dict:
@@ -401,6 +406,7 @@ class Table:
         Function that creates a new TID, increments the amount of records in the Base_page,
         then creates a TID dict that is mapped in the BP tail_page_directory.
         """
+
         rid = self.num_records
         self.num_records += 1
         self.page_directory[rid] = self.__new_tail_rid_dict(page_range_index=page_range_index)
@@ -423,7 +429,7 @@ class Table:
         if tail_page_index > self.page_range_data[page_range_index]["tail_page_count"] - 1:
             self._allocate_new_tail_page(page_range_index, self.page_range_data[page_range_index]["tail_page_count"])
         
-        # TODO Do you need this Jim?
+        # TODO Do you need this Jim? NO WE DON'T HALEY
         self.page_ranges[page_range_index].num_tail_records += 1
         self.page_range_data[page_range_index]["num_tail_records"] += 1
         self.num_tail_records += 1
@@ -436,30 +442,6 @@ class Table:
         }
         # print(f'__new_tail_rid = {rid_dict}')
         return rid_dict
-
-    def __get_last_base_page_record_location(self) -> dict:
-        """
-        Helper function that returns a dict of the memory location for a given RID
-        """
-        
-        page_range_index = math.floor(self.num_base_records / ENTRIES_PER_PAGE_RANGE)
-        index = self.num_base_records % ENTRIES_PER_PAGE_RANGE
-        base_page_index = math.floor(index / ENTRIES_PER_PAGE)
-        physical_page_index = index % ENTRIES_PER_PAGE
-
-        return {'page_range': page_range_index, 'base_page': base_page_index, 'page_index': physical_page_index}
-
-    def set_column_name(self, name: str, column_key: int) -> None:
-        """
-        Function that maps a name to a column key in the Table column_names dict
-        :param name: str            Name to map to a column key
-        :param column_key: int      Integer associated with a given data column 
-        """
-        try:
-            self.column_names[column_key] = name
-            return
-        except Exception as e:
-            raise ValueError(f'ERROR: Unable to assign column name. {e}')
 
     def create_new_page_range(self) -> int:
         """
@@ -478,7 +460,7 @@ class Table:
         This function takes a newly created rid and a Record and finds the appropriate base page to insert it to and
         updates the rid value in the page_directory appropriately
         """
-
+        self.record_lock.acquire()
         record_info = self.page_directory.get(rid)
         pr = record_info.get('page_range')
         bp = record_info.get('base_page')
@@ -506,7 +488,7 @@ class Table:
 
         # Stop working with BasePage Frame
         self.bufferpool.frames[frame_index].unpin_frame()
-        
+        self.record_lock.release()
         return True
 
     def update_record(self, updated_record: Record, rid: int) -> bool:
@@ -514,6 +496,10 @@ class Table:
         This function takes a Record and a RID and finds the appropriate place to write the record and writes it
         """
 
+<<<<<<< HEAD
+=======
+        self.record_lock.acquire()
+>>>>>>> main
         rid_info = self.page_directory.get(rid)
         pr = rid_info.get('page_range')
         bp = rid_info.get('base_page')
@@ -536,6 +522,10 @@ class Table:
 
         new_update_rid = self.new_tail_rid(page_range_index=pr)
         new_rid_dict = self.page_directory.get(new_update_rid)
+<<<<<<< HEAD
+=======
+        # print(f"New update rid {new_rid_dict}")
+>>>>>>> main
 
         new_pr = new_rid_dict.get('page_range')
         new_tp = new_rid_dict.get('tail_page')
@@ -581,6 +571,11 @@ class Table:
 
         self.page_range_data[pr]['num_updates'] += 1
 
+<<<<<<< HEAD
+=======
+        self.record_lock.release()
+
+>>>>>>> main
         return True
 
     def read_record(self, rid) -> Record:
@@ -592,6 +587,7 @@ class Table:
 
         self.record_lock.acquire()
         record_info = self.page_directory.get(rid)
+
         # Check if updated value is false
         pr = record_info.get("page_range")
         bp = record_info.get("base_page")
@@ -602,12 +598,21 @@ class Table:
 
         # Start working with BasePage Frame
         frame_info = (self.name, pr, bp, is_base_record)
+
         if not self.bufferpool.is_record_in_pool(self.name, record_info=record_info):
+<<<<<<< HEAD
             self.bufferpool.load_page(self.name, self.num_columns, page_range_index=pr, base_page_index=bp,
                                       is_base_record=is_base_record)
 
         # Get Frame index
         frame_index = self.bufferpool.frame_directory.get(frame_info)
+=======
+            frame_index = self.bufferpool.load_page(self.name, self.num_columns, page_range_index=pr, base_page_index=bp,
+                                      is_base_record=is_base_record)
+        else:
+            frame_index = self.bufferpool.frame_directory.get(frame_info)
+
+>>>>>>> main
         indirection_rid = self.bufferpool.frames[frame_index].all_columns[INDIRECTION].read(pp_index)
 
         for col in range(self.num_columns + META_COLUMN_COUNT):
@@ -680,9 +685,21 @@ class Table:
     """
 
     def records_with_rid(self, column, key):
+<<<<<<< HEAD
         column_index = self.index.get_index_for_column(column)
         # if there is an index, use the index
         if column_index is not None:
+=======
+        """
+        Returns list of rids with given key in given column
+        if there are no rows with given key in given column, return an empty list
+        """
+        column_index = self.index.get_index_for_column(column)
+        # if there is an index, use the index
+        if column_index is not None:
+            # print(f'records key = {key}')
+            # print(f'column_index = {column_index.index}')
+>>>>>>> main
             return column_index.get(key)
         # otherwise, do linear scan to find rids with given column value
         else:

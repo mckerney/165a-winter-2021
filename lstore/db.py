@@ -1,8 +1,9 @@
 from lstore.table import Table
 from lstore.bufferpool import *
+from lstore.que_cc import *
+import time
 import os
 import shutil
-import json
 import pickle
 
 
@@ -14,12 +15,17 @@ class Database:
         self.tables = {}
         self.bufferpool = None
         self.root_name = None
+        self.batcher = None
 
     def open(self, path):
         """
         Open takes in a path to the root of the file system
         """
         self.bufferpool = Bufferpool(path)
+        self.batcher = Batcher()
+
+        # TODO spawn a main thread that doesn't close until db.close is called, so we can join out other threads
+
         # Check if root path already exists and set the root_name
         if os.path.isdir(path):
             self.root_name = path
@@ -47,7 +53,8 @@ class Database:
             path_to_table = self.table_directory[table_name].get("table_path_name")
             num_columns = self.table_directory[table_name].get("num_columns")
             table_key = self.table_directory[table_name].get("key")
-            temp_table = Table(name=table_name, num_columns=num_columns, key=table_key, path=path_to_table, bufferpool=self.bufferpool, is_new=False)
+            temp_table = Table(name=table_name, num_columns=num_columns, key=table_key, path=path_to_table,
+                               bufferpool=self.bufferpool, batcher=self.batcher, is_new=False)
             path_to_page_directory = f"{path_to_table}/page_directory.pkl"
             with open(path_to_page_directory, "rb") as page_directory:
                 temp_table.page_directory = pickle.load(page_directory)
@@ -72,11 +79,20 @@ class Database:
         pickle.dump(self.table_directory, table_directory_file)
         table_directory_file.close()
 
+        # Thread cleanup
+        self.let_execution_threads_complete()
+        self.batcher.kill_threads()
+
         # go through every table and save the page directories
         for table_info in self.table_directory.values():
             table_name = table_info.get("name")
             table = self.tables[table_name]
             table.record_lock = None
+<<<<<<< HEAD
+=======
+            table.db_batcher = None
+            table.bufferpool.data_lock = None
+>>>>>>> main
             did_close = table.close_table_page_directory()
 
             if not did_close:
@@ -85,30 +101,36 @@ class Database:
             # save indexes as pkl
             index_file = open(f"{table.table_path}/indices.pkl", "wb")
 
+            for index in table.index.indices:
+                if index is not None:
+                    index.lock = None
+
             pickle.dump(table.index, index_file)
             index_file.close()
         
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
 
+<<<<<<< HEAD
+=======
+        print(f'\nDB CLOSING')
+>>>>>>> main
         return True
 
-    """
-    # create_table makes a new directory inside root called name and adds it to our table directory; makes a new table object
-    :param name: string         # Table name
-    :param num_columns: int     # Number of Columns: all columns are integer
-    :param key: int             # Index of table key in columns
-    """
     def create_table(self, name: str, num_columns: int, key: int) -> Table:
- 
+        """
+        # create_table makes a new directory inside root called name and adds it to our table directory; makes a new table object
+        :param name: string         # Table name
+        :param num_columns: int     # Number of Columns: all columns are integer
+        :param key: int             # Index of table key in columns
+        """
         table_path_name = f"{self.root_name}/{name}"
         if os.path.isdir(table_path_name):
             raise Exception(f"Sorry the name {name} is already taken")
         else:
             os.mkdir(table_path_name)
-        
-        # TODO : simplify table object down to the bare minimum
-        table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool)
+
+        table = Table(name, num_columns, key, path=table_path_name, bufferpool=self.bufferpool, batcher=self.batcher)
         # create default index on primary key
         table.index.create_default_primary_index()
         self.tables[name] = table
@@ -145,9 +167,17 @@ class Database:
 
         return False
 
-    """
-    # Returns table with the passed name
-    """
     def get_table(self, name):
+<<<<<<< HEAD
+=======
+        """
+        Returns table with the passed name
+        """
+>>>>>>> main
         print(f'tables = {self.tables}')
         return self.tables[name]
+
+    def let_execution_threads_complete(self):
+        # Thread cleanup
+        while self.batcher.xacts_queued != self.batcher.xacts_completed:
+            time.sleep(.01)
