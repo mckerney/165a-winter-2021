@@ -29,8 +29,6 @@ class IndividualIndex:
         last_base_page = math.floor(index / ENTRIES_PER_PAGE)
         last_physical_page_index = index % ENTRIES_PER_PAGE
 
-        # print(f'last page range:{last_page_range}')
-        # print(f'last base page:{last_base_page}')
 
         for page_range_index in range(0, last_page_range+1):
             page_range_path = f'{table.table_path}/page_range_{page_range_index}'
@@ -40,7 +38,6 @@ class IndividualIndex:
                 last_base_page_index = last_base_page  
             for base_page_index in range(0, last_base_page_index+1):
                 path_to_file = f'{page_range_path}/base_page_{base_page_index}.bin'
-                # print(path_to_file)
 
                 column_page = Page(META_COLUMN_COUNT+column_number)
                 column_page.read_from_disk(path_to_file,META_COLUMN_COUNT+column_number)
@@ -82,11 +79,9 @@ class IndividualIndex:
 
                         val = physical_tail_page.read(row)
                         
-                        # print("TAIL VAL", val)
                         self.index[val] = (self.index.get(val) or []) + [rid]
                     else:
                         val = column_page.read(row)
-                        # print("BASE VAL", val)
                         self.index[val] = (self.index.get(val) or [])+[rid]
 
         self.lock.release()
@@ -145,6 +140,5 @@ class Index:
         # optional: Drop index of specific column
         """
         if column_number == 0:
-            # print('you cannot remove the primary key index')
             return
         self.indices[column_number] = None

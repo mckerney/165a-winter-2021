@@ -146,8 +146,7 @@ class Table:
                 physical_page = bytearray(PAGE_SIZE)
                 for j in range(self.num_columns+META_COLUMN_COUNT):
                     base_page_file.write(physical_page)
-                
-                # print(f"The size using getSize of {base_page_file_name} is {getSize(base_page_file)}\n")
+
                 base_page_file.close()
             
             tail_page_directory_path_name = f"{page_range_path_name}/tail_pages"
@@ -170,7 +169,6 @@ class Table:
         Function that allocates a new TailPage to disk and updates the parent PageRange
         """
         # Create new tail page
-        # # print(f'Allocating new tail page')
         new_tail_file_name = f"{self.table_path}/page_range_{page_range_index}" \
                              f"/tail_pages/tail_page_{tail_page_index}.bin"
 
@@ -412,7 +410,7 @@ class Table:
             'page_index': physical_page_index,
             'is_base_record': False
         }
-        # print(f'__new_tail_rid = {rid_dict}')
+
         return rid_dict
 
     def create_new_page_range(self) -> int:
@@ -491,7 +489,6 @@ class Table:
 
         new_update_rid = self.new_tail_rid(page_range_index=pr)
         new_rid_dict = self.page_directory.get(new_update_rid)
-        # print(f"New update rid {new_rid_dict}")
 
         new_pr = new_rid_dict.get('page_range')
         new_tp = new_rid_dict.get('tail_page')
@@ -643,8 +640,6 @@ class Table:
         column_index = self.index.get_index_for_column(column)
         # if there is an index, use the index
         if column_index is not None:
-            # print(f'records key = {key}')
-            # print(f'column_index = {column_index.index}')
             return column_index.get(key)
         # otherwise, do linear scan to find rids with given column value
         else:
