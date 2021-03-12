@@ -7,23 +7,53 @@ sys.path.append('../')
 
 from lstore.db import Database
 from lstore.query import Query
-
+from lstore.transaction import Transaction
+from lstore.helpers import *
 '''
 json_object = '{"sid":100, "grades": [15,10,8,17]}'
 '''
 
 app = Flask(__name__)
 
+clear_database('../ECS165')
+
 db = Database()
 db.open('../ECS165')
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
 
-'''
-@app.route('/')
-def hello():
-    return "Hello, World!"
-'''
+num_threads = 8
+insert_transactions = []
+update_transactions = []
+select_transactions = []
+delete_transactions = []
+
+@app.route('/insert-transaction', methods=['POST'])
+def insert_transaction():
+    '''
+    transaction = {
+        "sid": 100,
+        "args": [arg1,arg2...]
+    }
+    '''
+    transaction = Transaction()
+    record = request.get_json()
+
+    args = [record["sid"]] + record["grades"]
+    print("ARGS:", args)
+    transaction.add_query(query.insert(*args))
+    insert_transactions.append(transaction) 
+
+    # batch for every transaction we recieve
+    db.batcher.enqueue_xact(transaction)
+
+    db.let_execution_threads_complete()
+
+    results = str(transaction.results)
+    print("RESULTS", results)
+
+    return str(transaction.results), 200
+
 
 @app.route('/insert', methods=['POST'])
 def insert():
