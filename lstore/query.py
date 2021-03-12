@@ -80,14 +80,10 @@ class Query:
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 
         if did_successfully_write:
-            # print('INSERT SUCCESSFUL')
             for i in range(len(columns_list)):
                 column_index = self.table.index.get_index_for_column(i)
-                # print(f'column_index = {column_index}')
                 if column_index is not None:
                     column_index.insert(columns_list[i], new_rid)
-                    # print(f'post insert col index = {column_index.index}')
-            # print(f'INSERT RID = {self.table.index.indices[0].index}')
             return True
 
         return False
@@ -110,16 +106,13 @@ class Query:
         # Check that the incoming user arguments to select are valid
         if column > self.table.num_columns or column < 0:
             # column argument out of range
-            # print('bad column input 1')
             return False
         if len(query_columns) != self.table.num_columns:
             # length of query columns must equal the number of columns in the table
-            # print('bad column input 2')
             return False
         for value in query_columns:
             # incoming query column values must be 0 or 1
             if value != 0 and value != 1:
-                # print('bad column input 3')
                 return False
 
         # Make sure that the record selected by the user exists in our database
@@ -128,7 +121,6 @@ class Query:
         self.table.page_directory.get(record_rid)
 
         if len(valid_rids) == 0:
-            # print('no valid rids', key, column)
             return False
         record_return_list = []
         for rid in valid_rids:
@@ -140,7 +132,6 @@ class Query:
                     selected_record.user_date[i] = None
             record_return_list.append(selected_record.user_data)
 
-        # print(f"__SELECT RETURNING {record_return_list[0].all_columns}")
         return record_return_list
 
     def update(self, key, *columns):
@@ -161,42 +152,32 @@ class Query:
             return False
 
         if columns_list[0] is not None:
-            # print('columns_list[0] is not None')
             # You cannot update the primary key
             return False
 
         valid_rid = self.table.record_does_exist(key=key)
         if valid_rid is None:
-            # print('valid_rid is None')
             return False
 
         self.table.merge_check(valid_rid)
 
-        # print(f'*************************** UPDATE FOR {key} ******************************')
         current_record = self.table.read_record(rid=valid_rid)  # read record need to give the MRU
-        # print("current_record", current_record.all_columns)
         schema_encoding_as_int = current_record.all_columns[SCHEMA_ENCODING_COLUMN]
         current_record_data = current_record.user_data
-        # print('schema as int ', schema_encoding_as_int)
+
         for i in range(len(columns)):
-            # print(f"colummns[i] {i}", columns[i])
             if columns[i] is None:
                 if not get_bit(value=schema_encoding_as_int, bit_index=i):
-                    # print(f'NOT @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                     current_record_data[i] = 0
                 else:
-                    # print(f' CON @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                     continue
             else:
-                # print(f'ELSE @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                 schema_encoding_as_int = set_bit(value=schema_encoding_as_int, bit_index=i)
                 current_record_data[i] = columns[i]
-        # print(f'MERGE valid_rid = {valid_rid}')
+
         new_tail_record = Record(key=key, rid=None, base_rid=valid_rid,
                                  schema_encoding=schema_encoding_as_int, column_values=current_record_data)
-        # print(f'QUERY New Tail Record {new_tail_record.all_columns}')
 
-        # TODO: this is untested, because m2 tester does ever not select non-primary key values
         # updating indices
         for i in range(len(columns_list)):
             if columns_list[i] is not None:

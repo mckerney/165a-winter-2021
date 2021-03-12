@@ -126,8 +126,6 @@ class Bufferpool:
 
         # need to evict a page because the bufferpool is at capacity
         if self.at_capacity() and not self.merge_buffer:
-            # print(f'********  FRAME COUNT = {self.frame_count}')
-
             frame_index = self.evict_page()
             self.frames[frame_index] = Frame(path_to_page_on_disk=path_to_page, table_name=table_name)
         else:
@@ -145,7 +143,6 @@ class Bufferpool:
         self.frames[frame_index].all_columns = [Page(column_num=i) for i in range(num_columns + META_COLUMN_COUNT)]
 
         # Read in values from disk
-        # print(f'Reading from {path_to_page}')
         for i in range(num_columns + META_COLUMN_COUNT):
             self.frames[frame_index].all_columns[i].read_from_disk(path_to_page=path_to_page, column=i)
 

@@ -45,16 +45,13 @@ class Batcher:
         """
         fills a batch with transactions from the xact_queue
         """
-        # print('BATCHING transactions')
         for i in range(BATCH_SIZE + 1):
 
             if len(self.xact_batch) < BATCH_SIZE and len(self.xact_queue) > 0:
-                # print("BATCH < BATCH_SIZE")
                 xact = self.xact_queue.popleft()
                 self.xact_batch.append(xact)
 
             if len(self.xact_batch) == BATCH_SIZE or len(self.xact_queue) == 0:
-                # print("BATCH equals BATCH_SIZE or QUEUE is EMPTY")
                 self.xact_batch.sort(key=lambda xacts: xacts.timestamp)
                 self.batch_ready = True
 
@@ -72,7 +69,6 @@ class Batcher:
                 self.xact_meta_data[xact.id][2] = True
                 ret_list = self.xact_meta_data[xact.id][1]
                 xact.set_return_values(ret_list)
-                # print(f'TRANSACTION {xact.id + 1} return = {xact.get_return_values()}')
                 self.transaction.remove(xact)
                 self.xacts_completed += 1
 
@@ -107,7 +103,6 @@ class PlanningWorker:
         self.planner_thread.start()
 
     def do_work(self, stop):
-        # print('PLANNER STARTING')
 
         while True:
 
@@ -117,7 +112,6 @@ class PlanningWorker:
             time.sleep(.001)
 
             if self.batcher.batch_ready:
-                # print(f'PLANNING - current batch: {self.batcher.xact_batch}')
                 # moved sort to batch ready check
 
                 for xact in self.batcher.xact_batch:
@@ -129,7 +123,6 @@ class PlanningWorker:
                         self.batcher.xact_meta_data[xact.id] = [len(xact.queries), [], False]
 
                         for query in xact.queries:
-                            # print(f'IN PLANNING WORKER DO WORK: {query.query_name}')
                             query.set_xact_id(xact.id)
                             index = query.key % QUEUES_PER_GROUP
                             self.group.queues[index].append(query)
@@ -152,7 +145,6 @@ class ExecutionWorker:
         self.exec_thread.start()
 
     def do_execution(self, stop):
-        # print(f'EXECUTOR {self.assigned_index} STARTING')
 
         while True:
 
@@ -162,19 +154,15 @@ class ExecutionWorker:
             time.sleep(.001)
 
             if len(self.batcher.high_priority_group.queues[self.assigned_index]) > 0:
-                    # print(f'EXECUTING HIGH {self.assigned_index}')
 
                     q_op = self.batcher.high_priority_group.queues[self.assigned_index].popleft()
-                    # print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
                     ret = q_op.run()
                     self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)
 
             else:  # low priority
                 if len(self.batcher.low_priority_group.queues[self.assigned_index]) > 0:
-                    # print(f'EXECUTING LOW {self.assigned_index}')
 
                     q_op = self.batcher.low_priority_group.queues[self.assigned_index].popleft()
-                    # print(f'RUNNING {q_op.query_name} BY WORKER {self.assigned_index}')
                     ret = q_op.run()
                     self.batcher.xact_meta_data[q_op.xact_id][1].append(ret)
 
@@ -192,7 +180,6 @@ class InternWorker:
         self.intern_thread.start()
 
     def batcher_maintenance(self, stop):
-        # print("STARTING INTERN")
 
         while True:
 
@@ -200,9 +187,6 @@ class InternWorker:
                 break
 
             time.sleep(.01)
-
-            # if not self.batcher.batch_ready:
-            #     self.batcher.batch_xact()
 
             if self.batcher.check_batch_completion():
                 self.batcher.xact_batch = []

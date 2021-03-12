@@ -108,7 +108,6 @@ class Database:
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
 
-        print(f'\nDB CLOSING')
         return True
 
     def create_table(self, name: str, num_columns: int, key: int) -> Table:
@@ -165,7 +164,6 @@ class Database:
         """
         Returns table with the passed name
         """
-        print(f'tables = {self.tables}')
         return self.tables[name]
 
     def let_execution_threads_complete(self):

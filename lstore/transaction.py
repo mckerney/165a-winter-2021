@@ -48,7 +48,6 @@ class QueryOp:
             self.columns = args[1]      # columns
 
         if query_name == 'sum':
-            # TODO: consult key index for rid and initialize self.rid for all involved? Might want to wrap each read?
             self.start_range = args[0]  # start_range
             self.end_range = args[1]    # end_range
             self.column = args[2]       # aggregate_column_index
@@ -61,14 +60,12 @@ class QueryOp:
         Run the Query
         """
         if self.query_name == INSERT:
-            # print(f'RUN {self.columns}')
             return self.query_func(*self.columns)
 
         if self.query_name == 'delete':
             return self.query_func(self.key)
 
         if self.query_name == 'select':
-            # print(f'RUN {self.columns}')
             return self.query_func(self.key, self.column, self.columns)
 
         if self.query_name == 'update':

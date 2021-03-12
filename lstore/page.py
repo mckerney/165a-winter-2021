@@ -44,7 +44,6 @@ def write_to_disk(path_to_page: str, all_columns: list):
     """
     Writes Pages to disk at the given file path
     """
-    # print(f'Writing to {path_to_page}')
     bin_file = open(path_to_page, "wb")
     for i in range(len(all_columns)):
         bin_file.write(all_columns[i].data)
