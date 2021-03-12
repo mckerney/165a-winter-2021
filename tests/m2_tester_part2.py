@@ -5,7 +5,7 @@ from lstore.config import *
 from random import choice, randint, sample, seed
 
 db = Database()
-db.open('./ECS165')
+db.open('../ECS165')
 
 grades_table = db.get_table('Grades')
 query = Query(grades_table)

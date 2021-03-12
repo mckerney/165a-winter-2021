@@ -5,7 +5,8 @@ from lstore.helpers import clear_database
 
 from random import choice, randint, sample, seed
 
-clear_database('./ECS165')
+# Uncomment this if you want to run the test multiple times
+# clear_database('./ECS165')
 
 db = Database()
 db.open('./ECS165')

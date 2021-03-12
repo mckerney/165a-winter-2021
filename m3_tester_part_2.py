@@ -5,10 +5,14 @@ from lstore.helpers import *
 from lstore.config import *
 from random import choice, randint, sample, seed
 
-clear_database('./ECS165')
+
+path = './ECS165_M3_PART2'
+
+# Uncomment this if you want to run the test multiple times
+# clear_database(path)
 
 db = Database()
-db.open('./ECS165')
+db.open(path)
 grades_table = db.create_table('Grades', 5, 0)
 
 keys = []
