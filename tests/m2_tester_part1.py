@@ -5,9 +5,9 @@ from lstore.helpers import *
 
 from random import choice, randint, sample, seed
 
-path = './ECS165'
+path = '../ECS165'
 db = Database()
-db.open('./ECS165')
+db.open('../ECS165')
 
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
