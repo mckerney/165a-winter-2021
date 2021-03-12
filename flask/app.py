@@ -19,7 +19,7 @@ clear_database('../ECS165')
 
 db = Database()
 db.open('../ECS165')
-grades_table = db.create_table('Grades', 5, 0)
+grades_table = db.create_table('Grades', 4, 0)
 query = Query(grades_table)
 
 num_threads = 8
@@ -28,19 +28,22 @@ update_transactions = []
 select_transactions = []
 delete_transactions = []
 
+@app.route('/')
+def home():
+    return 'Home page'
+
 @app.route('/insert-transaction', methods=['POST'])
 def insert_transaction():
     '''
-    transaction = {
-        "sid": 100,
-        "args": [arg1,arg2...]
+    {
+        "id": 100,
+        "query1": [arg1,arg2,arg3]
     }
     '''
     transaction = Transaction()
     record = request.get_json()
 
-    args = [record["sid"]] + record["grades"]
-    print("ARGS:", args)
+    args = [record["id"]] + record["values"]
     transaction.add_query(query.insert(*args))
     insert_transactions.append(transaction) 
 
@@ -50,11 +53,60 @@ def insert_transaction():
     db.let_execution_threads_complete()
 
     results = str(transaction.results)
-    print("RESULTS", results)
 
-    return str(transaction.results), 200
+    return results, 200
 
+@app.route('/update-transaction', methods=['POST'])
+def update(sid):
+    '''
+    {
+        "values": [arg1,arg2,arg3]
+    }
+    '''
+    transaction = Transaction()
+    record = request.get_json()
 
+    # Don't update the id
+    record = [None] + record["values"]
+
+    transaction.add_query(query.update(sid, *record))
+
+    update_transactions.append(transaction)
+
+    # batch for every transaction we recieve
+    db.batcher.enqueue_xact(transaction)
+
+    db.let_execution_threads_complete()
+
+    results = str(transaction.results)
+
+    return results, 200
+
+@app.route('/select-transaction', methods=['GET'])
+def select(sid):
+    # no json required
+    transaction = Transaction()
+
+    # select all rows
+    q = query.select(sid, 0, [1, 1, 1, 1])
+    transaction.add_query(q)
+
+    db.batcher.enqueue_xact(select_transactions[i])
+
+    db.let_execution_threads_complete()
+
+    # Check if i need to transform into JSON
+    results = str(transaction.results)
+    print("results are:", results)
+
+    return results, 200
+
+@app.route('/delete-transaction', methods=['POST'])
+def delete(sid):
+
+    
+
+# **************************************************************************
 @app.route('/insert', methods=['POST'])
 def insert():
     record = request.get_json()
