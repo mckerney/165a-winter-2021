@@ -83,12 +83,12 @@ def update(sid):
     return results, 200
 
 @app.route('/select-transaction', methods=['GET'])
-def select(sid):
+def select(key):
     # no json required
     transaction = Transaction()
 
     # select all rows
-    q = query.select(sid, 0, [1, 1, 1, 1])
+    q = query.select(key, 0, [1, 1, 1, 1])
     transaction.add_query(q)
 
     db.batcher.enqueue_xact(select_transactions[i])
@@ -102,7 +102,25 @@ def select(sid):
     return results, 200
 
 @app.route('/delete-transaction', methods=['POST'])
-def delete(sid):
+def delete(key):
+    # no json required
+    transaction = Transaction()
+
+    q = query.delete(key)
+    transaction.add_query(q)
+
+    db.batcher.enqueue_xact(select_transactions[i])
+
+    db.let_execution_threads_complete()
+
+    # Check if i need to transform into JSON
+    results = str(transaction.results)
+    print("results are:", results)
+
+    return results, 200
+
+
+
 
     
 
