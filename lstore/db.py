@@ -88,11 +88,8 @@ class Database:
             table_name = table_info.get("name")
             table = self.tables[table_name]
             table.record_lock = None
-<<<<<<< HEAD
-=======
             table.db_batcher = None
             table.bufferpool.data_lock = None
->>>>>>> main
             did_close = table.close_table_page_directory()
 
             if not did_close:
@@ -111,10 +108,7 @@ class Database:
         # Write all dirty values back to disk
         self.bufferpool.commit_all_frames()
 
-<<<<<<< HEAD
-=======
         print(f'\nDB CLOSING')
->>>>>>> main
         return True
 
     def create_table(self, name: str, num_columns: int, key: int) -> Table:
@@ -168,12 +162,9 @@ class Database:
         return False
 
     def get_table(self, name):
-<<<<<<< HEAD
-=======
         """
         Returns table with the passed name
         """
->>>>>>> main
         print(f'tables = {self.tables}')
         return self.tables[name]
 

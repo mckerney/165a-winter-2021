@@ -77,34 +77,6 @@ import threading
 '''
 
 
-<<<<<<< HEAD
-class BasePage:
-    """
-    :param num_columns: int         Number of data columns in the BasePage
-    :param parent_key: int          Holds the integer key of the parent Page Range
-    :param bp_key: int              Holds the integer key of itself as it maps to the Parent Page_range list
-    """
-    def __init__(self, num_columns: int, parent_key: int, bp_key: int):
-        # Create a list of Physical Pages num_columns long plus Indirection, RID, TimeStamp, and Schema columns
-        self.columns_list = [Page(column_num=i) for i in range(num_columns + META_COLUMN_COUNT)]
-        self.pr_key = parent_key
-        self.key = bp_key
-        self.tps = 0
-    
-
-class TailPage:
-    """
-    :param num_columns: int         Number of data columns in the TailPage
-    :param key: int                 Holds the integer key of the parent PageRange
-    """
-    def __init__(self, num_columns: int, key: int):
-        self.key = key
-        # Create a list of Physical Pages num_columns long plus Indirection, RID, TimeStamp, and Schema columns
-        self.columns_list = [Page(column_num=i) for i in range(num_columns + META_COLUMN_COUNT)]
-        
-    
-=======
->>>>>>> main
 class PageRange:
     """
     :param num_columns: int        Number of data columns in the PageRange
@@ -496,10 +468,7 @@ class Table:
         This function takes a Record and a RID and finds the appropriate place to write the record and writes it
         """
 
-<<<<<<< HEAD
-=======
         self.record_lock.acquire()
->>>>>>> main
         rid_info = self.page_directory.get(rid)
         pr = rid_info.get('page_range')
         bp = rid_info.get('base_page')
@@ -522,10 +491,7 @@ class Table:
 
         new_update_rid = self.new_tail_rid(page_range_index=pr)
         new_rid_dict = self.page_directory.get(new_update_rid)
-<<<<<<< HEAD
-=======
         # print(f"New update rid {new_rid_dict}")
->>>>>>> main
 
         new_pr = new_rid_dict.get('page_range')
         new_tp = new_rid_dict.get('tail_page')
@@ -571,11 +537,8 @@ class Table:
 
         self.page_range_data[pr]['num_updates'] += 1
 
-<<<<<<< HEAD
-=======
         self.record_lock.release()
 
->>>>>>> main
         return True
 
     def read_record(self, rid) -> Record:
@@ -600,19 +563,11 @@ class Table:
         frame_info = (self.name, pr, bp, is_base_record)
 
         if not self.bufferpool.is_record_in_pool(self.name, record_info=record_info):
-<<<<<<< HEAD
-            self.bufferpool.load_page(self.name, self.num_columns, page_range_index=pr, base_page_index=bp,
-                                      is_base_record=is_base_record)
-
-        # Get Frame index
-        frame_index = self.bufferpool.frame_directory.get(frame_info)
-=======
             frame_index = self.bufferpool.load_page(self.name, self.num_columns, page_range_index=pr, base_page_index=bp,
                                       is_base_record=is_base_record)
         else:
             frame_index = self.bufferpool.frame_directory.get(frame_info)
 
->>>>>>> main
         indirection_rid = self.bufferpool.frames[frame_index].all_columns[INDIRECTION].read(pp_index)
 
         for col in range(self.num_columns + META_COLUMN_COUNT):
@@ -685,11 +640,6 @@ class Table:
     """
 
     def records_with_rid(self, column, key):
-<<<<<<< HEAD
-        column_index = self.index.get_index_for_column(column)
-        # if there is an index, use the index
-        if column_index is not None:
-=======
         """
         Returns list of rids with given key in given column
         if there are no rows with given key in given column, return an empty list
@@ -699,7 +649,6 @@ class Table:
         if column_index is not None:
             # print(f'records key = {key}')
             # print(f'column_index = {column_index.index}')
->>>>>>> main
             return column_index.get(key)
         # otherwise, do linear scan to find rids with given column value
         else:

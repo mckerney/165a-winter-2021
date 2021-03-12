@@ -12,10 +12,6 @@ can be indexed through this object. Indices are usually B-Trees, but other data 
 class IndividualIndex:
 
     def __init__(self, table, column_number):
-<<<<<<< HEAD
-        # pass
-=======
->>>>>>> main
         # a map between column value and RID
         self.index = {}
         self.lock = threading.Lock()
@@ -95,15 +91,6 @@ class IndividualIndex:
                         # print("BASE VAL", val)
                         self.index[val] = (self.index.get(val) or [])+[rid]
 
-<<<<<<< HEAD
-        # print(self.index)
-
-    # returns set of rids containing given value
-    def get(self, value):
-        return self.index.get(value)
-
-    def insert(self, value, new_rid):
-=======
         self.lock.release()
 
 
@@ -115,7 +102,6 @@ class IndividualIndex:
 
     def insert(self, value, new_rid):
         #self.lock.acquire()
->>>>>>> main
         self.index[value] = (self.index.get(value) or []) + [new_rid]
         #self.lock.release()
     
@@ -129,10 +115,7 @@ class IndividualIndex:
         #self.lock.release()
 
     def delete(self, value, deleted_rid):
-<<<<<<< HEAD
-=======
         #self.lock.acquire()
->>>>>>> main
         self.index[value].remove(deleted_rid)
         #self.lock.release()
 
@@ -161,12 +144,9 @@ class Index:
         self.indices[column_number] = IndividualIndex(self.table, column_number)
 
     def drop_index(self, column_number):
-<<<<<<< HEAD
-=======
         """
         # optional: Drop index of specific column
         """
->>>>>>> main
         if column_number == 0:
             # print('you cannot remove the primary key index')
             return

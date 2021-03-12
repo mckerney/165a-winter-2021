@@ -83,24 +83,16 @@ class Query:
             # print('INSERT SUCCESSFUL')
             for i in range(len(columns_list)):
                 column_index = self.table.index.get_index_for_column(i)
-<<<<<<< HEAD
-                if column_index is not None:
-                    column_index.insert(columns_list[i], new_rid)
-
-=======
                 # print(f'column_index = {column_index}')
                 if column_index is not None:
                     column_index.insert(columns_list[i], new_rid)
                     # print(f'post insert col index = {column_index.index}')
             # print(f'INSERT RID = {self.table.index.indices[0].index}')
->>>>>>> main
             return True
 
         return False
 
     def select(self, key, column, query_columns):
-<<<<<<< HEAD
-=======
         """
         # Read a record with specified key
         # :param key: the key value to select records based on
@@ -115,7 +107,6 @@ class Query:
         return q_op
 
     def __select(self, key, column, query_columns):
->>>>>>> main
         # Check that the incoming user arguments to select are valid
         if column > self.table.num_columns or column < 0:
             # column argument out of range
@@ -133,16 +124,11 @@ class Query:
 
         # Make sure that the record selected by the user exists in our database
         valid_rids = self.table.records_with_rid(column, key)
-<<<<<<< HEAD
-        if len(valid_rids) == 0:
-            print('no valid rids', key, column)
-=======
         record_rid = valid_rids[0]
         self.table.page_directory.get(record_rid)
 
         if len(valid_rids) == 0:
             # print('no valid rids', key, column)
->>>>>>> main
             return False
         record_return_list = []
         for rid in valid_rids:
@@ -152,14 +138,9 @@ class Query:
                     continue
                 else:
                     selected_record.user_date[i] = None
-<<<<<<< HEAD
-            record_return_list.append(selected_record)
-
-=======
             record_return_list.append(selected_record.user_data)
 
         # print(f"__SELECT RETURNING {record_return_list[0].all_columns}")
->>>>>>> main
         return record_return_list
 
     def update(self, key, *columns):
@@ -225,15 +206,10 @@ class Query:
                     base_rid = current_record.get_rid()
                     column_index.update(columns_list[i], old_value, base_rid)
 
-<<<<<<< HEAD
-=======
         self.lock.release()
->>>>>>> main
         return self.table.update_record(updated_record=new_tail_record, rid=valid_rid)
 
     def sum(self, start_range, end_range, aggregate_column_index):
-<<<<<<< HEAD
-=======
         """
         :param start_range: int             # Start of the key range to aggregate
         :param end_range: int               # End of the key range to aggregate
@@ -242,7 +218,6 @@ class Query:
         # Returns the summation of the given range upon success
         # Returns False if no record exists in the given range
         """
->>>>>>> main
         # Check the aggregate_column_index is in range
         if aggregate_column_index < 0 or aggregate_column_index > self.table.num_columns:
             # Invalid user input to sum

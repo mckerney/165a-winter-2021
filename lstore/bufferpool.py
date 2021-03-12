@@ -12,11 +12,8 @@ class Bufferpool:
         self.frame_count = 0
         self.path_to_root = path_to_root
         self.merge_buffer = False
-<<<<<<< HEAD
-=======
         self.data_lock = threading.Lock()
 
->>>>>>> main
 
     def _add_frame_to_directory(self, table_name, page_range, base_page, is_base_record, frame_index):
 
@@ -129,11 +126,8 @@ class Bufferpool:
 
         # need to evict a page because the bufferpool is at capacity
         if self.at_capacity() and not self.merge_buffer:
-<<<<<<< HEAD
-=======
             # print(f'********  FRAME COUNT = {self.frame_count}')
 
->>>>>>> main
             frame_index = self.evict_page()
             self.frames[frame_index] = Frame(path_to_page_on_disk=path_to_page, table_name=table_name)
         else:
@@ -169,10 +163,6 @@ class Bufferpool:
         for i in range(num_columns + META_COLUMN_COUNT):
             frame_to_reload.all_columns[i].read_from_disk(path_to_page=path_to_page, column=i)
 
-<<<<<<< HEAD
-=======
-
->>>>>>> main
     def commit_page(self, frame_index):
         frame_to_commit = self.frames[frame_index]
         all_columns = frame_to_commit.all_columns
