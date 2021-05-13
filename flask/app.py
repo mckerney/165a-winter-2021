@@ -49,7 +49,7 @@ def insert_transaction():
     transaction.add_query(query.insert(*args))
     insert_transactions.append(transaction) 
 
-    # batch for every transaction we recieve
+    # batch for every transaction we receive
     db.batcher.enqueue_xact(transaction)
 
     db.let_execution_threads_complete()
@@ -76,7 +76,7 @@ def update(sid):
 
     update_transactions.append(transaction)
 
-    # batch for every transaction we recieve
+    # batch for every transaction we receive
     db.batcher.enqueue_xact(transaction)
 
     db.let_execution_threads_complete()
@@ -95,7 +95,7 @@ def select(key):
     q = query.select(key, 0, [1, 1, 1, 1])
     transaction.add_query(q)
 
-    db.batcher.enqueue_xact(select_transactions[i])
+    db.batcher.enqueue_xact(select_transactions[0])
 
     db.let_execution_threads_complete()
 
@@ -114,7 +114,7 @@ def delete(key):
     q = query.delete(key)
     transaction.add_query(q)
 
-    db.batcher.enqueue_xact(select_transactions[i])
+    db.batcher.enqueue_xact(select_transactions[0])
 
     db.let_execution_threads_complete()
 
@@ -135,7 +135,8 @@ def insert():
         return 'None', 200
 
     # convert json object to dict
-    insert_success = query.insert(record["sid"], record["grades"][0], record["grades"][1], record["grades"][2], record["grades"][3])
+    insert_success = query.insert(record["sid"], record["grades"][0], record["grades"][1], record["grades"][2],
+                                  record["grades"][3])
     
     ret = "Inserted SID " + str(record["sid"]) + " successfully"
 
@@ -150,7 +151,7 @@ def delete(sid):
 
 @app.route('/select', methods=['GET'])
 def select(sid):
-    record = query.select(sid, 0, [1,1,1,1,1])
+    record = query.select(sid, 0, [1, 1, 1, 1, 1])
     if not record:
         return 'None', 200
     
