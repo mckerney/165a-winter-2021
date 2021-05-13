@@ -1,10 +1,11 @@
-from lstore.table import Table
-from lstore.index import Index
 from lstore.record import Record
 from lstore.config import *
 from lstore.helpers import *
+from lstore.transaction import *
+
 from copy import deepcopy
 from math import ceil
+import threading
 
 
 class Query:
@@ -16,33 +17,53 @@ class Query:
     """
 
     def __init__(self, table):
-        self.table = table     
+        self.table = table
+        self.lock = threading.Lock()
 
-    """
-    # internal Method
-    # Read a record with specified key
-    # Returns True upon successful deletion
-    # Return False if record doesn't exist or is locked due to 2PL
-    # Current implementation of delete only sets the delete value to true in the page_directory
-    """
     def delete(self, key):
+        """
+        # internal Method
+        # Read a record with specified key
+        # Returns True upon successful deletion
+        # Return False if record doesn't exist or is locked due to 2PL
+        # Current implementation of delete only sets the delete value to true in the page_directory
+        """
+        q_op = QueryOp()
+        q_op.add_query(DELETE, self.__delete, key)
+        return q_op
+
+    def __delete(self, key):
         # Make sure key exists 
         rid = self.table.record_does_exist(key)
         if rid is None:
             return False
         
         # Once found, update delete value to true in page directory
-
         self.table.page_directory[rid]["deleted"] = True
+
+        # remove rid of deleted row from all indexes
+        record = self.table.read_record(rid)
+        for i in range(len(record.user_data)):
+            key = record.user_data[i]
+            if self.table.index.indices[i] is not None:
+                self.table.index.get_index_for_column(i).delete(key,rid)
         return True
 
-    """
-    # Insert a record with specified columns
-    # Return True upon successful insertion
-    # Returns False if insert fails for whatever reason
-    """        
     def insert(self, *columns):
-        # Check to ensure the insertion data is valid before writing
+        """
+        Create an Insert transaction
+        """
+        q_op = QueryOp()
+        q_op.add_query(INSERT, self.__insert, *columns)
+        return q_op
+
+    def __insert(self, *columns):
+        """
+        Insert a record with specified columns
+        Return True upon successful insertion
+        Return False if insert fails for whatever reason
+        """
+
         unique_identifier = columns[0]
         columns_list = list(columns)
         if len(columns_list) != self.table.num_columns:
@@ -59,45 +80,55 @@ class Query:
         did_successfully_write = self.table.write_new_record(record=new_record, rid=new_rid)
 
         if did_successfully_write:
+            # print('INSERT SUCCESSFUL')
             for i in range(len(columns_list)):
                 column_index = self.table.index.get_index_for_column(i)
-                if column_index != None:
-                    column_index.insert(columns_list[i],new_rid)
-
-            self.table.index
+                # print(f'column_index = {column_index}')
+                if column_index is not None:
+                    column_index.insert(columns_list[i], new_rid)
+                    # print(f'post insert col index = {column_index.index}')
+            # print(f'INSERT RID = {self.table.index.indices[0].index}')
             return True
 
         return False
 
-    """
-    # Read a record with specified key
-    # :param key: the key value to select records based on
-    # :column: the index where key is stored in our table
-    # :param query_columns: what columns to return. array of 1 or 0 values.
-    # Returns a list of Record objects upon success
-    # Returns False if record locked by TPL
-    # Assume that select will never be called on a key that doesn't exist
-    """
     def select(self, key, column, query_columns):
-        # Check that the incoming user agruments to select are valid
+        """
+        # Read a record with specified key
+        # :param key: the key value to select records based on
+        # :column: the index where key is stored in our table
+        # :param query_columns: what columns to return. array of 1 or 0 values.
+        # Returns a list of Record objects upon success
+        # Returns False if record locked by TPL
+        # Assume that select will never be called on a key that doesn't exist
+        """
+        q_op = QueryOp()
+        q_op.add_query(SELECT, self.__select, key, column, query_columns)
+        return q_op
+
+    def __select(self, key, column, query_columns):
+        # Check that the incoming user arguments to select are valid
         if column > self.table.num_columns or column < 0:
             # column argument out of range
-            print('bad column input 1')
+            # print('bad column input 1')
             return False
         if len(query_columns) != self.table.num_columns:
             # length of query columns must equal the number of columns in the table
-            print('bad column input 2')
+            # print('bad column input 2')
             return False
         for value in query_columns:
             # incoming query column values must be 0 or 1
             if value != 0 and value != 1:
-                print('bad column input 3')
+                # print('bad column input 3')
                 return False
 
         # Make sure that the record selected by the user exists in our database
-        valid_rids = self.table.records_with_rid(column,key)
+        valid_rids = self.table.records_with_rid(column, key)
+        record_rid = valid_rids[0]
+        self.table.page_directory.get(record_rid)
+
         if len(valid_rids) == 0:
-            print('no valid rids',key,column)
+            # print('no valid rids', key, column)
             return False
         record_return_list = []
         for rid in valid_rids:
@@ -107,75 +138,86 @@ class Query:
                     continue
                 else:
                     selected_record.user_date[i] = None
-            record_return_list.append(selected_record)
-            
+            record_return_list.append(selected_record.user_data)
+
+        # print(f"__SELECT RETURNING {record_return_list[0].all_columns}")
         return record_return_list
 
-
-    """
-    # Update a record with specified key and columns
-    # Returns True if update is successful
-    # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
-    """
     def update(self, key, *columns):
+        """
+        # Update a record with specified key and columns
+        # Returns True if update is successful
+        # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
+        """
+        q_op = QueryOp()
+        q_op.add_query(UPDATE, self.__update, key, columns)
+        return q_op
 
-        columns_list = list(columns)
+    def __update(self, key, columns):
+        self.lock.acquire()
+        columns_list = columns
+
         if len(columns_list) != self.table.num_columns:
             return False
 
         if columns_list[0] is not None:
+            # print('columns_list[0] is not None')
             # You cannot update the primary key
             return False
 
         valid_rid = self.table.record_does_exist(key=key)
         if valid_rid is None:
+            # print('valid_rid is None')
             return False
+
+        self.table.merge_check(valid_rid)
+
         # print(f'*************************** UPDATE FOR {key} ******************************')
         current_record = self.table.read_record(rid=valid_rid)  # read record need to give the MRU
         # print("current_record", current_record.all_columns)
         schema_encoding_as_int = current_record.all_columns[SCHEMA_ENCODING_COLUMN]
         current_record_data = current_record.user_data
-        # # print('schema as int ', schema_encoding_as_int)
+        # print('schema as int ', schema_encoding_as_int)
         for i in range(len(columns)):
-            # # print(f"colummns[i] {i}", columns[i])
+            # print(f"colummns[i] {i}", columns[i])
             if columns[i] is None:
                 if not get_bit(value=schema_encoding_as_int, bit_index=i):
-                    # # print(f'NOT @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
+                    # print(f'NOT @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                     current_record_data[i] = 0
                 else:
-                    # # print(f' CON @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
+                    # print(f' CON @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                     continue
             else:
-                # # print(f'ELSE @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
+                # print(f'ELSE @ i = {i}; set_bit == {set_bit(value=schema_encoding_as_int, bit_index=i)}')
                 schema_encoding_as_int = set_bit(value=schema_encoding_as_int, bit_index=i)
                 current_record_data[i] = columns[i]
-        
-        new_tail_record = Record(key=key, rid=valid_rid, base_rid=current_record.all_columns[RID_COLUMN],
+        # print(f'MERGE valid_rid = {valid_rid}')
+        new_tail_record = Record(key=key, rid=None, base_rid=valid_rid,
                                  schema_encoding=schema_encoding_as_int, column_values=current_record_data)
         # print(f'QUERY New Tail Record {new_tail_record.all_columns}')
 
-        #TODO: this is untested, because m2 tester does ever not select non-primary key values
+        # TODO: this is untested, because m2 tester does ever not select non-primary key values
         # updating indices
         for i in range(len(columns_list)):
-            if(columns_list[i] != None):
+            if columns_list[i] is not None:
                 column_index = self.table.index.get_index_for_column(i)
-                if(column_index != None):
+                if column_index is not None:
                     old_value = current_record.user_data[i]
                     base_rid = current_record.get_rid()
-                    column_index.update(columns_list[i],old_value,base_rid)
-        
+                    column_index.update(columns_list[i], old_value, base_rid)
+
+        self.lock.release()
         return self.table.update_record(updated_record=new_tail_record, rid=valid_rid)
 
-    """
-    :param start_range: int         # Start of the key range to aggregate 
-    :param end_range: int           # End of the key range to aggregate 
-    :param aggregate_columns: int  # Index of desired column to aggregate
-    # this function is only called on the primary key.
-    # Returns the summation of the given range upon success
-    # Returns False if no record exists in the given range
-    """
     def sum(self, start_range, end_range, aggregate_column_index):
-        # TODO: Once Indexing is implemented need to add logic to support it
+        """
+        :param start_range: int             # Start of the key range to aggregate
+        :param end_range: int               # End of the key range to aggregate
+        :param aggregate_column_index: int  # Index of desired column to aggregate
+        # this function is only called on the primary key.
+        # Returns the summation of the given range upon success
+        # Returns False if no record exists in the given range
+        """
         # Check the aggregate_column_index is in range
         if aggregate_column_index < 0 or aggregate_column_index > self.table.num_columns:
             # Invalid user input to sum
@@ -203,15 +245,15 @@ class Query:
         
         return column_sum
 
-    """
-    increments one column of the record
-    this implementation should work if your select and update queries already work
-    :param key: the primary of key of the record to increment
-    :param column: the column to increment
-    # Returns True is increment is successful
-    # Returns False if no record matches key or if target record is locked by 2PL.
-    """
     def increment(self, key, column):
+        """
+        increments one column of the record
+        this implementation should work if your select and update queries already work
+        :param key: the primary of key of the record to increment
+        :param column: the column to increment
+        # Returns True is increment is successful
+        # Returns False if no record matches key or if target record is locked by 2PL.
+        """
         r = self.select(key, self.table.key, [1] * self.table.num_columns)[0]
         if r is not False:
             updated_columns = [None] * self.table.num_columns

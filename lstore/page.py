@@ -12,15 +12,6 @@ class Page:
         self.column_num = column_num
         self.data = bytearray(PAGE_SIZE)
 
-    def has_capacity(self):
-        current_empty_space = ENTRIES_PER_PAGE - self.num_records
-        if current_empty_space == 0:
-            return False
-        elif current_empty_space > 0:
-            return True
-        else:
-            raise ValueError('ERROR: current_empty_space must be greater or equal to zero.')
-
     def write(self, value, row) -> bool:
         if row > ENTRIES_PER_PAGE:  # row number is larger than 511
             return False
@@ -58,17 +49,3 @@ def write_to_disk(path_to_page: str, all_columns: list):
     for i in range(len(all_columns)):
         bin_file.write(all_columns[i].data)
     bin_file.close()
-
-
-def is_page_full(page: Page) -> bool:
-    """
-    Given a Page object this function will look at the total elements a page can hold: PAGE_SIZE/PAGE_RECORD_SIZE
-    in config.py, then return True if the record count for the page is equal to that value and False otherwise.
-    :param page: Page       Page object to check
-    :return: bool           Returns True if page is full and False otherwise
-    """
-
-    total_elements_possible = (PAGE_SIZE / PAGE_RECORD_SIZE)  # How many total records the page can hold
-    if page.num_records == total_elements_possible:           # If the record count is equal to the total possible
-        return True                                           # the page is full
-    return False

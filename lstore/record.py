@@ -1,6 +1,7 @@
 from datetime import datetime
 from lstore.config import *
 
+
 class Record:
     def __init__(self, key, rid, base_rid, schema_encoding, column_values):
         self.primary_key = key

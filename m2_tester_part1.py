@@ -6,7 +6,6 @@ from lstore.helpers import *
 from random import choice, randint, sample, seed
 
 path = './ECS165'
-clear_database(path)
 db = Database()
 db.open('./ECS165')
 
@@ -22,8 +21,6 @@ for i in range(0, 1000):
     query.insert(*records[key])
 keys = sorted(list(records.keys()))
 print("Insert finished")
-
-
 
 for key in keys:
     record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
