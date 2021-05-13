@@ -1,14 +1,14 @@
 from flask import Flask, jsonify, request
+from lstore.db import Database
+from lstore.query import Query
+from lstore.transaction import Transaction
+from lstore.helpers import *
 import json
 
 # needed to import from lstore
 import sys
 sys.path.append('../')
 
-from lstore.db import Database
-from lstore.query import Query
-from lstore.transaction import Transaction
-from lstore.helpers import *
 '''
 json_object = '{"sid":100, "grades": [15,10,8,17]}'
 '''
@@ -28,18 +28,20 @@ update_transactions = []
 select_transactions = []
 delete_transactions = []
 
+
 @app.route('/')
 def home():
     return 'Home page'
 
+
 @app.route('/insert-transaction', methods=['POST'])
 def insert_transaction():
-    '''
+    """"
     {
         "id": 100,
         "query1": [arg1,arg2,arg3]
     }
-    '''
+    """
     transaction = Transaction()
     record = request.get_json()
 
@@ -56,13 +58,14 @@ def insert_transaction():
 
     return results, 200
 
+
 @app.route('/update-transaction', methods=['POST'])
 def update(sid):
-    '''
+    """
     {
         "values": [arg1,arg2,arg3]
     }
-    '''
+    """
     transaction = Transaction()
     record = request.get_json()
 
@@ -81,6 +84,7 @@ def update(sid):
     results = str(transaction.results)
 
     return results, 200
+
 
 @app.route('/select-transaction', methods=['GET'])
 def select(key):
@@ -101,6 +105,7 @@ def select(key):
 
     return results, 200
 
+
 @app.route('/delete-transaction', methods=['POST'])
 def delete(key):
     # no json required
@@ -120,10 +125,6 @@ def delete(key):
     return results, 200
 
 
-
-
-    
-
 # **************************************************************************
 @app.route('/insert', methods=['POST'])
 def insert():
@@ -140,10 +141,12 @@ def insert():
 
     return ret, 200
 
+
 @app.route('/delete', methods=['POST'])
 def delete(sid):
     query.delete(sid)
     return 'None', 200
+
 
 @app.route('/select', methods=['GET'])
 def select(sid):
@@ -159,5 +162,6 @@ def select(sid):
     json_ret = json.dumps(ret)
 
     return json_ret, 200
+
 
 app.run()
