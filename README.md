@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-# ECS165A - Milestone 2
-=======
 # ECS165A - Milestone 3
->>>>>>> main
 
 ![](miscellaneous/l-store.png)
 
